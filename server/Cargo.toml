@@ -1,0 +1,21 @@
+[package]
+name = "server"
+version = "0.1.0"
+authors.workspace = true
+homepage.workspace = true
+categories.workspace = true
+edition.workspace = true
+license-file.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde="1.0"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }
+thiserror="2.0"
+anyhow="1.0"
+axum="0.8"
+surrealdb="2.3"
+tracing="0.1"
+ractor="0.15"
+server-runtime = {path="../server-runtime"}

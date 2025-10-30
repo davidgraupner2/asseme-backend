@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <button onclick="socket.send('test')">Send</button>
+    <script>
+      const socket = new WebSocket('wss://asseme.dev.dagdev.net:8012/agent');
+
+      socket.onopen = (e) => {
+        console.log('Connected');
+      };
+
+      socket.onclose = (e) => {
+        console.log('Disconnected');
+      };
+
+      socket.onmessage = (e) => {
+        console.log(`Received: ${e.data}`);
+      };
+
+      socket.onerror = (e) => {
+        console.log(`Error: ${e.data}`);
+      };
+    </script>
+  </body>
+</html>
