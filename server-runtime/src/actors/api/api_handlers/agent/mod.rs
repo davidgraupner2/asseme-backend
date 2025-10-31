@@ -37,7 +37,7 @@ async fn agent_handler(
     ws.on_upgrade(|socket| handle_socket(socket, app))
 }
 
-async fn handle_socket(mut ws: WebSocket, app: Arc<AxumApiState>) {
+async fn handle_socket(ws: WebSocket, app: Arc<AxumApiState>) {
     //Split incoming socket into a sending and receiving side
     let (ws_tx, ws_rx) = ws.split();
     let ws_tx = Arc::new(Mutex::new(ws_tx));

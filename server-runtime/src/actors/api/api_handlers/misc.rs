@@ -11,7 +11,7 @@ pub fn misc_router() -> Router<Arc<AxumApiState>> {
 
 pub async fn api_get_info(State(state): State<Arc<AxumApiState>>) -> Json<serde_json::Value> {
     let id = &state.id;
-    let version = AppVersion::new(state.db.clone()).await;
+    let version = AppVersion::new(state.db_client.clone()).await;
 
     Json(serde_json::json!({
         "status": "ok",

@@ -6,6 +6,9 @@ pub struct DatabaseConfiguration {
     pub url: String,
     pub user_name: String,
     pub password: String,
+    pub namespace: String,
+    pub database: String,
+    pub access_method: String,
 }
 
 impl Default for DatabaseConfiguration {
@@ -15,6 +18,9 @@ impl Default for DatabaseConfiguration {
             url: "".to_string(),
             user_name: "".to_string(),
             password: "".to_string(),
+            namespace: "".to_string(),
+            database: "".to_string(),
+            access_method: "user".to_string(),
         }
     }
 }

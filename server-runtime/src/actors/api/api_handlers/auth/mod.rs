@@ -1,25 +1,22 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::Json, http::StatusCode, response::Json as ResponseJson, routing::post, Router,
+    extract::State, http::StatusCode, response::Json as ResponseJson, routing::post, Json, Router,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use surrealdb::{
     engine::remote::ws::{Client, Ws},
-    opt::auth::Database,
+    opt::auth::{Database, Jwt, Record},
     Surreal,
 };
 use tracing::{error, info, warn};
 
 use crate::actors::api::state::AxumApiState;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SigninRequest {
-    pub access_method: String,
-    pub namespace: String,
-    pub database: String,
-    pub username: String,
+    pub email: String,
     pub password: String,
 }
 
@@ -27,8 +24,7 @@ pub struct SigninRequest {
 pub struct SigninResponse {
     pub success: bool,
     pub message: String,
-    pub session_token: Option<String>,
-    pub user_id: Option<String>,
+    pub jwt: Option<Jwt>,
     pub timestamp: DateTime<Utc>,
 }
 
@@ -57,130 +53,111 @@ pub fn auth_router() -> Router<Arc<AxumApiState>> {
 }
 
 pub async fn api_post_signin(
+    State(app): State<Arc<AxumApiState>>,
     Json(signin_request): Json<SigninRequest>,
 ) -> Result<ResponseJson<SigninResponse>, (StatusCode, ResponseJson<ErrorResponse>)> {
     info!(
         "Processing signin request for user: {}",
-        signin_request.username
+        signin_request.email
     );
 
-    // Validate input
-    if signin_request.username.is_empty() || signin_request.password.is_empty() {
-        let error_response = ErrorResponse {
-            success: false,
-            error: "Username and password are required".to_string(),
-            timestamp: Utc::now(),
-        };
-        return Err((StatusCode::BAD_REQUEST, ResponseJson(error_response)));
-    }
-
-    if signin_request.namespace.is_empty() || signin_request.database.is_empty() {
-        let error_response = ErrorResponse {
-            success: false,
-            error: "Namespace and database are required".to_string(),
-            timestamp: Utc::now(),
-        };
-        return Err((StatusCode::BAD_REQUEST, ResponseJson(error_response)));
-    }
-
-    // Initialize SurrealDB connection
-    let db = Surreal::new::<Ws>("127.0.0.1:8000").await.map_err(|e| {
-        error!("Failed to connect to SurrealDB: {}", e);
-        let error_response = ErrorResponse {
-            success: false,
-            error: "Database connection failed".to_string(),
-            timestamp: Utc::now(),
-        };
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            ResponseJson(error_response),
-        )
-    })?;
-
-    // Use the specified namespace and database
-    db.use_ns(&signin_request.namespace)
-        .use_db(&signin_request.database)
-        .await
-        .map_err(|e| {
-            error!("Failed to use namespace/database: {}", e);
-            let error_response = ErrorResponse {
-                success: false,
-                error: "Failed to access specified namespace/database".to_string(),
-                timestamp: Utc::now(),
-            };
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ResponseJson(error_response),
-            )
-        })?;
+    let timestamp = Utc::now();
 
     // Attempt to sign in with database-level authentication
-    let signin_result = db
-        .signin(Database {
-            namespace: &signin_request.namespace,
-            database: &signin_request.database,
-            username: &signin_request.username,
-            password: &signin_request.password,
+    let jwt = app
+        .db_client
+        .signin(Record {
+            namespace: &app.db_config.namespace,
+            database: &app.db_config.database,
+            access: &app.db_config.access_method,
+            params: SigninRequest {
+                email: signin_request.email.clone(),
+                password: signin_request.password.clone(),
+            },
         })
         .await;
 
-    let timestamp = Utc::now();
-    let login_successful = signin_result.is_ok();
-
-    // Create user login record
-    let login_record = UserLoginRecord {
-        user_id: if login_successful {
-            format!("{}::{}", signin_request.namespace, signin_request.username)
-        } else {
-            "unknown".to_string()
-        },
-        username: signin_request.username.clone(),
-        login_time: timestamp,
-        access_method: signin_request.access_method.clone(),
-        namespace: signin_request.namespace.clone(),
-        database: signin_request.database.clone(),
-        success: login_successful,
-        ip_address: None, // TODO: Extract from request headers
-        user_agent: None, // TODO: Extract from request headers
-    };
-
-    // Record the login attempt
-    if let Err(e) = record_user_login(&db, login_record.clone()).await {
-        warn!("Failed to record login attempt: {}", e);
-        // Don't fail the request if logging fails, just warn
-    }
-
-    match signin_result {
-        Ok(_jwt) => {
-            info!("User {} successfully signed in", signin_request.username);
-            // For now, we'll generate a simple session token
-            // In production, you'd want to use the actual JWT or create your own session token
-            let session_token = format!(
-                "session_{}_{}_{}",
-                signin_request.username,
-                signin_request.namespace,
-                timestamp.timestamp()
-            );
-
-            let response = SigninResponse {
+    match jwt {
+        Ok(jwt) => match app.db_client.authenticate(jwt.clone()).await {
+            Ok(_) => Ok(Json(SigninResponse {
                 success: true,
-                message: "Successfully signed in".to_string(),
-                session_token: Some(session_token),
-                user_id: Some(login_record.user_id),
+                message: "Signed in successfully".to_string(),
+                jwt: Some(jwt),
                 timestamp,
-            };
-            Ok(ResponseJson(response))
-        }
-        Err(e) => {
-            warn!("Signin failed for user {}: {}", signin_request.username, e);
+            })),
+            Err(auth_error) => {
+                let error_response = ErrorResponse {
+                    success: false,
+                    error: format!("Authentication failed - {:#?}", auth_error),
+                    timestamp,
+                };
+                Err((StatusCode::UNAUTHORIZED, ResponseJson(error_response)))
+            }
+        },
+        Err(error) => {
             let error_response = ErrorResponse {
                 success: false,
-                error: format!("Authentication failed: {}", e),
+                error: format!("Signin failed - {:#?}", error),
                 timestamp,
             };
             Err((StatusCode::UNAUTHORIZED, ResponseJson(error_response)))
         }
     }
+
+    // Create user login record
+    // let login_record = UserLoginRecord {
+    //     user_id: if login_successful {
+    //         format!("{}::{}", signin_request.namespace, signin_request.email)
+    //     } else {
+    //         "unknown".to_string()
+    //     },
+    //     username: signin_request.email.clone(),
+    //     login_time: timestamp,
+    //     access_method: signin_request.access_method.clone(),
+    //     namespace: signin_request.namespace.clone(),
+    //     database: signin_request.database.clone(),
+    //     success: login_successful,
+    //     ip_address: None, // TODO: Extract from request headers
+    //     user_agent: None, // TODO: Extract from request headers
+    // };
+
+    // Record the login attempt
+    // if let Err(e) = record_user_login(&db, login_record.clone()).await {
+    //     warn!("Failed to record login attempt: {}", e);
+    //     // Don't fail the request if logging fails, just warn
+    // }
+
+    // match jwt {
+    //     Ok(_jwt) => {
+    //         info!("User {} successfully signed in", signin_request.email);
+    //         // For now, we'll generate a simple session token
+    //         // In production, you'd want to use the actual JWT or create your own session token
+    //         let session_token = format!(
+    //             "session_{}_{}_{}",
+    //             signin_request.email,
+    //             signin_request.namespace,
+    //             timestamp.timestamp()
+    //         );
+
+    //         let response = SigninResponse {
+    //             success: true,
+    //             message: "Successfully signed in".to_string(),
+    //             session_token: Some(session_token),
+    //             user_id: Some(login_record.user_id),
+    //             timestamp,
+    //         };
+    //         Ok(ResponseJson(response))
+    //     }
+    //     Err(e) => {
+    //         warn!("Signin failed for user {}: {}", signin_request.email, e);
+    //         let error_response = ErrorResponse {
+    //             success: false,
+    //             error: format!("Authentication failed: {}", e),
+    //             timestamp,
+    //         };
+    //         Err((StatusCode::UNAUTHORIZED, ResponseJson(error_response)))
+    //     }
+    // }
 }
 
 async fn record_user_login(

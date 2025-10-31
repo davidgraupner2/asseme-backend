@@ -43,12 +43,6 @@ impl Actor for API {
     ) -> Result<Self::State, ActorProcessingErr> {
         event!(tracing::Level::INFO, "API Server starting");
 
-        // // Initialize Rustls crypto provider
-        // rustls::crypto::ring::default_provider()
-        //     .install_default()
-        //     .map_err(|_| ())
-        //     .ok(); // Ignore error if already installed
-
         let state = ApiActorState::new();
 
         // Load the TLS Certificates
@@ -61,14 +55,6 @@ impl Actor for API {
 
         // Setup the API Routes
         let app = Self::router(axum_state);
-        // let app = Router::new()
-        //     .nest(
-        //         "/api",
-        //         Router::new()
-        //             .nest("/auth", api_handlers::auth::auth_router())
-        //             .merge(api_handlers::misc::misc_router()),
-        //     )
-        //     .with_state(axum_state);
 
         // Start the Web Server
         let listener = TcpListener::bind(format!("0.0.0.0:{}", arguments.api_config.port)).unwrap();

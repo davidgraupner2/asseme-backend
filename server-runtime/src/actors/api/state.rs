@@ -20,7 +20,8 @@ use tracing::{event, Level};
 #[derive(Clone)]
 pub struct AxumApiState {
     pub id: String,
-    pub db: Surreal<Client>,
+    pub db_client: Surreal<Client>,
+    pub db_config: DatabaseConfiguration,
     pub broadcast_tx: Arc<Mutex<Sender<Message>>>,
 }
 
@@ -32,18 +33,19 @@ impl AxumApiState {
         event!(
             Level::DEBUG,
             "API Server Connecting to database on: {}://{}",
-            database_config.connection_type,
-            database_config.url
+            &database_config.connection_type,
+            &database_config.url
         );
 
         let db = match database_config.connection_type.as_str() {
-            "wss" => Surreal::new::<Wss>(database_config.url).await,
-            _ => Surreal::new::<Ws>(database_config.url).await,
+            "wss" => Surreal::new::<Wss>(&database_config.url).await,
+            _ => Surreal::new::<Ws>(&database_config.url).await,
         };
 
-        let db = db.expect("DATABASE_CONNECTION_ERROR: API Server Failed to connect to database");
+        let db_client =
+            db.expect("DATABASE_CONNECTION_ERROR: API Server Failed to connect to database");
 
-        if let Err(e) = db
+        if let Err(e) = db_client
             .signin(Root {
                 username: &database_config.user_name,
                 password: &database_config.password,
@@ -55,7 +57,8 @@ impl AxumApiState {
 
         Self {
             id: runtime_id(),
-            db,
+            db_client,
+            db_config: database_config.clone(),
             broadcast_tx: Arc::new(Mutex::new(tx)),
         }
     }
