@@ -3,7 +3,7 @@
 resolver="2"
 
 # Members of this project workspace
-members = ["server", "server-config", "server-runtime"]
+members = ["database","server", "server-config", "server-runtime"]
 
 # Exluded from this project workspace
 exclude = []

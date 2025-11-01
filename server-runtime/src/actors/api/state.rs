@@ -1,5 +1,6 @@
 use crate::{actors::ActorStatus, properties::runtime_id};
 use axum::extract::ws::Message;
+use database::{self, context::get_database};
 use server_config::database::DatabaseConfiguration;
 use std::sync::Arc;
 use surrealdb::{
@@ -30,30 +31,41 @@ impl AxumApiState {
         let (tx, _) = broadcast::channel(32);
 
         // Let the API connect to the SurrealDB Database
-        event!(
-            Level::DEBUG,
-            "API Server Connecting to database on: {}://{}",
-            &database_config.connection_type,
-            &database_config.url
-        );
+        // event!(
+        //     Level::DEBUG,
+        //     "API Server Connecting to database on: {}://{}",
+        //     &database_config.connection_type,
+        //     &database_config.url
+        // );
 
-        let db = match database_config.connection_type.as_str() {
-            "wss" => Surreal::new::<Wss>(&database_config.url).await,
-            _ => Surreal::new::<Ws>(&database_config.url).await,
-        };
+        // let db = match database_config.connection_type.as_str() {
+        //     "wss" => Surreal::new::<Wss>(&database_config.url).await,
+        //     _ => Surreal::new::<Ws>(&database_config.url).await,
+        // };
 
-        let db_client =
-            db.expect("DATABASE_CONNECTION_ERROR: API Server Failed to connect to database");
+        // let db_client =
+        //     db.expect("DATABASE_CONNECTION_ERROR: API Server Failed to connect to database");
 
-        if let Err(e) = db_client
-            .signin(Root {
-                username: &database_config.user_name,
-                password: &database_config.password,
-            })
-            .await
-        {
-            panic!("DATABASE_AUTH_ERROR: API Server Failed to authenticate with database. Check username/password in config: {}", e);
-        }
+        // if let Err(e) = db_client
+        //     .signin(Root {
+        //         username: &database_config.user_name,
+        //         password: &database_config.password,
+        //     })
+        //     .await
+        // {
+        //     panic!("DATABASE_AUTH_ERROR: API Server Failed to authenticate with database. Check username/password in config: {}", e);
+        // }
+
+        let db_client = get_database(
+            database_config.connection_type.clone(),
+            database_config.url.clone(),
+            database_config.user_name.clone(),
+            database_config.password.clone(),
+            database_config.namespace.clone(),
+            database_config.database.clone(),
+        )
+        .await
+        .unwrap();
 
         Self {
             id: runtime_id(),
