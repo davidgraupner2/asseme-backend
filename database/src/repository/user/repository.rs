@@ -54,6 +54,16 @@ impl UserRepository {
         Ok(record.unwrap())
     }
 
+    pub async fn update_last_login(&self, id: String) -> Result<User> {
+        let query = format!(
+            "UPDATE user SET last_login = time::now() WHERE id = type::thing('user', '{}')",
+            id
+        );
+        let mut result = self.db.query(query).await?;
+        let record: Option<User> = result.take(0)?;
+        Ok(record.unwrap())
+    }
+
     pub async fn delete_user(&self, id: String) -> Result<User> {
         let result = self.db.delete((&self.table, id)).await?.unwrap();
         Ok(result)

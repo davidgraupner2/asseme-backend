@@ -20,4 +20,4 @@ DEFINE FIELD OVERWRITE billing_responsibility ON TABLE tenant TYPE string ASSERT
 DEFINE FIELD OVERWRITE status ON TABLE tenant TYPE string ASSERT $value IN ['active', 'suspended', 'inactive'] DEFAULT 'active';
 DEFINE FIELD OVERWRITE settings ON TABLE tenant TYPE object DEFAULT {};
 DEFINE FIELD OVERWRITE created_at ON TABLE tenant TYPE datetime DEFAULT time::now();
-DEFINE FIELD OVERWRITE updated_at ON TABLE tenant TYPE datetime DEFAULT time::now();
+DEFINE FIELD OVERWRITE updated_at ON TABLE tenant TYPE datetime VALUE time::now();

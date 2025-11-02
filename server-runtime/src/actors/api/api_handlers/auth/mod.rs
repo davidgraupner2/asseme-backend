@@ -8,13 +8,8 @@ use chrono::{DateTime, Utc};
 use database::model::user::User;
 use database::repository::user::repository::UserRepository;
 use serde::{Deserialize, Serialize};
-use surrealdb::{
-    engine::remote::ws::Client,
-    opt::auth::{Jwt, Record},
-    sql::Thing,
-    Surreal,
-};
-use tracing::{error, info, warn};
+use surrealdb::opt::auth::{Jwt, Record};
+use tracing::{info, warn};
 
 use crate::actors::api::state::AxumApiState;
 
@@ -86,15 +81,14 @@ pub async fn api_post_signin(
                 info!("Signin succeeded for {}", signin_request.email);
 
                 let user_repository = UserRepository::new(app.db_client.clone());
-                let mut user = user_repository
+                let user = user_repository
                     .get_by_email(signin_request.email.clone())
                     .await
                     .unwrap();
 
-                user.set_last_login();
-
-                user = user_repository
-                    .update_user(user.id.clone().unwrap().id.to_string(), user.clone())
+                // Update last login directly in the database
+                let user = user_repository
+                    .update_last_login(user.id.clone().unwrap().id.to_string())
                     .await
                     .unwrap();
 
@@ -135,42 +129,6 @@ pub async fn api_post_signin(
                 timestamp,
             };
             Err((StatusCode::UNAUTHORIZED, ResponseJson(error_response)))
-        }
-    }
-}
-
-async fn get_user_id(db: Surreal<Client>, email: String) -> Option<String> {
-    // Query to get the user ID as a Thing object
-    match db
-        .query(format!(
-            "select VALUE id from only user where email = '{}'",
-            email
-        ))
-        .await
-    {
-        Ok(mut result) => {
-            println!("Result: {:#?}", result);
-
-            // Try to get the Thing directly
-            match result.take::<Option<Thing>>(0) {
-                Ok(Some(thing)) => {
-                    // Convert Thing to string format: "table:id"
-                    let user_id = format!("{}:{}", thing.tb, thing.id);
-                    Some(user_id)
-                }
-                Ok(None) => {
-                    println!("No user found with email: {}", email);
-                    None
-                }
-                Err(e) => {
-                    error!("Failed to parse Thing from result: {}", e);
-                    None
-                }
-            }
-        }
-        Err(e) => {
-            error!("Failed to query user: {}", e);
-            None
         }
     }
 }

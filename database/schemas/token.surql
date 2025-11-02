@@ -16,7 +16,7 @@ DEFINE FIELD OVERWRITE jwt ON token TYPE string;
 DEFINE FIELD OVERWRITE type[*] ON token TYPE 'agent' PERMISSIONS FULL;
 DEFINE FIELD OVERWRITE owner ON token TYPE record<user>;
 DEFINE FIELD OVERWRITE created_at ON TABLE billing TYPE datetime DEFAULT time::now();
-DEFINE FIELD OVERWRITE updated_at ON TABLE billing TYPE datetime DEFAULT time::now();
+DEFINE FIELD OVERWRITE updated_at ON TABLE billing TYPE datetime VALUE time::now();
 
 -- Indexes for performance
 DEFINE INDEX OVERWRITE tenant_slug_idx ON TABLE tenant COLUMNS slug UNIQUE;

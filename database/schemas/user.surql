@@ -27,4 +27,4 @@ DEFINE FIELD OVERWRITE is_active ON TABLE user TYPE bool DEFAULT true;
 DEFINE FIELD OVERWRITE last_login ON TABLE user TYPE option<datetime>;
 DEFINE FIELD OVERWRITE password_changed_at ON TABLE user TYPE option<datetime>;
 DEFINE FIELD OVERWRITE created_at ON TABLE user TYPE datetime DEFAULT time::now();
-DEFINE FIELD OVERWRITE updated_at ON TABLE user TYPE datetime DEFAULT time::now();
+DEFINE FIELD OVERWRITE updated_at ON TABLE user TYPE datetime VALUE time::now();

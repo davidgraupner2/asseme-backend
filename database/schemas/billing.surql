@@ -20,4 +20,4 @@ DEFINE FIELD OVERWRITE invoice_number ON TABLE billing TYPE string;
 DEFINE FIELD OVERWRITE msp_commission ON TABLE billing TYPE option<number>;
 DEFINE FIELD OVERWRITE payment_due_date ON TABLE billing TYPE datetime;
 DEFINE FIELD OVERWRITE created_at ON TABLE billing TYPE datetime DEFAULT time::now();
-DEFINE FIELD OVERWRITE updated_at ON TABLE billing TYPE datetime DEFAULT time::now();
+DEFINE FIELD OVERWRITE updated_at ON TABLE billing TYPE datetime VALUE time::now();
