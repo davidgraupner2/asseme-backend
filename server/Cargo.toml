@@ -19,3 +19,4 @@ surrealdb="2.3"
 tracing="0.1"
 ractor="0.15"
 server-runtime = {path="../server-runtime"}
+dotenvy="0.15"

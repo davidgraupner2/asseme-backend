@@ -1,9 +1,13 @@
+use dotenvy::dotenv;
 use ractor::Actor;
 use server_runtime::controller::Controller;
 use tokio::signal;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load any environment variables from a .env file
+    dotenv().ok();
+
     // Start the runtime controller
     let (actor, _actor_handle) = Actor::spawn(None, Controller, ())
         .await

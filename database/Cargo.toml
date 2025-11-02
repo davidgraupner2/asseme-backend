@@ -19,3 +19,4 @@ tracing = "0.1.41"
 server-config={path="../server-config"}
 surrealdb={version="2.3",features = []}
 chrono = { version = "0.4", features = ["serde"] }
+surrealdb-migrations="2.3"
