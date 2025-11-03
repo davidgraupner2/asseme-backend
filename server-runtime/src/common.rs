@@ -1,7 +1,6 @@
 use semver::Version;
 use serde::Serialize;
 use surrealdb::{engine::remote::ws::Client, Surreal};
-use tokio::time::{timeout, Duration};
 use tracing_appender::non_blocking::WorkerGuard;
 
 pub const APP_NAME: &str = "asseme";
@@ -40,14 +39,7 @@ pub async fn bootstrap_runtime(log_level: &str) -> Vec<WorkerGuard> {
     tracing_guards
 }
 
-// pub async fn check_db_health(url: String) -> String {
-//     // // Spawn the DB version check in a separate task that can be timed out
-//     let version_check = tokio::spawn(async { DB.version().await });
-
-//     match timeout(Duration::from_millis(DB_TIMEOUT), version_check).await {
-//         Ok(Ok(Ok(version))) => format!("Connected (v{})", version),
-//         Ok(Ok(Err(_))) => "Error".to_string(),
-//         Ok(Err(_)) => "Task Error".to_string(),
-//         Err(_) => "Timeout".to_string(),
-//     }
-// }
+// Simple email format validation
+pub fn is_valid_email_format(email: &str) -> bool {
+    email.contains('@') && email.contains('.') && !email.is_empty() && email.len() > 3
+}

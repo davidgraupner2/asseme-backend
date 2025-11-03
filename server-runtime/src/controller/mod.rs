@@ -1,8 +1,8 @@
 pub mod messages;
 mod state;
 
-use crate::actors::api::startup::APIStartupArguments;
-use crate::actors::api::API;
+use crate::actors::api::actor::APIActor;
+use crate::actors::api::types::APIStartupArguments;
 // use crate::common::check_db_health;
 use crate::{common::bootstrap_runtime, properties::runtime_id};
 use messages::ControllerMessage;
@@ -70,7 +70,11 @@ impl Actor for Controller {
         };
 
         let api_server = myself
-            .spawn_linked(Some("API Server".to_string()), API {}, api_startup_args)
+            .spawn_linked(
+                Some("API Server".to_string()),
+                APIActor {},
+                api_startup_args,
+            )
             .await;
         match api_server {
             Ok((actor_ref, _join_handle)) => state.api_server = Some(actor_ref),

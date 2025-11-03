@@ -9,7 +9,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
     // Start the runtime controller
-    let (actor, _actor_handle) = Actor::spawn(None, Controller, ())
+    let (_actor, _actor_handle) = Actor::spawn(None, Controller, ())
         .await
         .expect("Controller failed to start");
 

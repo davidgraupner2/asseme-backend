@@ -1,10 +1,10 @@
+use crate::model::user::User;
 use surrealdb::{
     engine::remote::ws::{Client, Ws, Wss},
+    sql::Thing,
     Error, Result, Surreal,
 };
 use tracing::{error, event, info, warn, Level};
-
-use crate::model::user::User;
 
 pub struct UserRepository {
     table: String,
@@ -68,4 +68,31 @@ impl UserRepository {
         let result = self.db.delete((&self.table, id)).await?.unwrap();
         Ok(result)
     }
+
+    // pub async fn activate_user_with_tenant(
+    //     &self,
+    //     user_id: String,
+    //     primary_tenant: Thing,
+    //     accessible_tenants: Vec<Thing>,
+    // ) -> Result<User> {
+    //     let query = format!(
+    //         "UPDATE user:{} SET
+    //             is_active = true,
+    //             signup_completed = true,
+    //             primary_tenant = $primary_tenant,
+    //             accessible_tenants = $accessible_tenants,
+    //             updated_at = time::now()",
+    //         user_id
+    //     );
+
+    //     let mut result = self
+    //         .db
+    //         .query(query)
+    //         .bind(("primary_tenant", primary_tenant))
+    //         .bind(("accessible_tenants", accessible_tenants))
+    //         .await?;
+
+    //     let user: Option<User> = result.take(0)?;
+    //     Ok(user.unwrap())
+    // }
 }

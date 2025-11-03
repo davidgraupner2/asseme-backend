@@ -1,3 +1,3 @@
-pub mod agent;
-pub mod auth;
-pub mod misc;
+pub(crate) mod agent;
+pub(crate) mod auth;
+pub(crate) mod misc;
