@@ -15,5 +15,6 @@ use std::sync::Arc;
 pub fn auth_router() -> Router<Arc<AxumApiState>> {
     Router::new()
         .route("/signin", post(handle_signin))
-        .route("/signup", post(signup::handlers::handle_signup)) // Add this
+        .route("/signup", post(signup::handlers::handle_customer_signup))
+        .route("/signup_msp", post(signup::handlers::handle_msp_signup))
 }

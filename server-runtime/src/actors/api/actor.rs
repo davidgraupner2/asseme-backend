@@ -20,6 +20,7 @@ impl APIActor {
                 "/api",
                 Router::new()
                     .nest("/auth", api_handlers::auth::auth_router())
+                    .nest("/tenant", api_handlers::tenant::tenant_router())
                     .merge(api_handlers::misc::misc_router()),
             )
             .nest("/agent", api_handlers::agent::agent_router())
