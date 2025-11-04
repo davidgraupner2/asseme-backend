@@ -1,6 +1,7 @@
 use crate::{actors::ActorStatus, properties::runtime_id};
 use axum::extract::ws::Message;
 use database::{self, context::get_database};
+use server_config::api::ApiConfiguration;
 use server_config::database::DatabaseConfiguration;
 use std::sync::Arc;
 use surrealdb::{engine::remote::ws::Client, Surreal};
@@ -19,10 +20,14 @@ pub struct AxumApiState {
     pub db_client: Surreal<Client>,
     pub db_config: DatabaseConfiguration,
     pub broadcast_tx: Arc<Mutex<Sender<Message>>>,
+    pub behind_proxy: bool,
 }
 
 impl AxumApiState {
-    pub async fn new(database_config: DatabaseConfiguration) -> Self {
+    pub async fn new(
+        database_config: DatabaseConfiguration,
+        api_configuration: ApiConfiguration,
+    ) -> Self {
         let (tx, _) = broadcast::channel(32);
 
         let db_client = get_database(
@@ -41,6 +46,7 @@ impl AxumApiState {
             db_client,
             db_config: database_config.clone(),
             broadcast_tx: Arc::new(Mutex::new(tx)),
+            behind_proxy: api_configuration.behind_proxy,
         }
     }
 }
