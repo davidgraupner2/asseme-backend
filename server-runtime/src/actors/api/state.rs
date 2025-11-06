@@ -2,6 +2,7 @@ use crate::{actors::ActorStatus, properties::runtime_id};
 use axum::extract::ws::Message;
 use database::{self, context::get_database};
 use server_config::api::ApiConfiguration;
+use server_config::cors::CorsConfiguration;
 use server_config::database::DatabaseConfiguration;
 use std::sync::Arc;
 use surrealdb::{engine::remote::ws::Client, Surreal};

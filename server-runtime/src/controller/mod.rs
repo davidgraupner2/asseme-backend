@@ -67,6 +67,7 @@ impl Actor for Controller {
         let api_startup_args = APIStartupArguments {
             api_config: state.config.api.clone(),
             database_config: state.config.database.clone(),
+            cors: state.config.api.cors.clone(),
         };
 
         let api_server = myself
@@ -141,7 +142,7 @@ impl Actor for Controller {
             ControllerMessage::ReloadConfig => {
                 event!(tracing::Level::INFO, "Reloading configuration...");
                 // Reload configuration from file
-                state.config = server_config::Config::load("./config/config.toml");
+                state.config = server_config::Config::load();
             }
             ControllerMessage::RecreateDatabase => {
                 event!(tracing::Level::WARN, "Recreating database...");

@@ -1,5 +1,4 @@
 use crate::actors::api::messages::APIMessage;
-use crate::properties::config_file_name;
 use ractor::ActorRef;
 use server_config::Config;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -14,7 +13,7 @@ pub struct ControllerState {
 
 impl ControllerState {
     pub fn new() -> Self {
-        let config = Config::create(config_file_name());
+        let config = Config::load();
 
         Self {
             config,

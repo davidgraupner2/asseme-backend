@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::env;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DatabaseConfiguration {
@@ -14,13 +15,13 @@ pub struct DatabaseConfiguration {
 impl Default for DatabaseConfiguration {
     fn default() -> Self {
         DatabaseConfiguration {
-            connection_type: "".to_string(),
-            url: "".to_string(),
-            user_name: "".to_string(),
-            password: "".to_string(),
-            namespace: "".to_string(),
-            database: "".to_string(),
-            access_method: "user".to_string(),
+            connection_type: env::var("DB_CONNECTION_TYPE").unwrap_or("ws".to_string()),
+            url: env::var("DB_URL").unwrap_or("".to_string()),
+            user_name: env::var("DB_USER_NAME").unwrap_or("".to_string()),
+            password: env::var("DB_PASSWORD").unwrap_or("".to_string()),
+            namespace: env::var("DB_NAMESPACE").unwrap_or("".to_string()),
+            database: env::var("DB_DATABASE").unwrap_or("".to_string()),
+            access_method: env::var("DB_ACCESS_METHOD").unwrap_or("".to_string()),
         }
     }
 }

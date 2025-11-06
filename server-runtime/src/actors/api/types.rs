@@ -4,11 +4,14 @@ use serde::{Deserialize, Serialize};
 
 pub(crate) type ApiResult<T> = Result<ApiResponse<T>, ApiResponse<()>>;
 
-use server_config::{api::ApiConfiguration, database::DatabaseConfiguration};
+use server_config::{
+    api::ApiConfiguration, cors::CorsConfiguration, database::DatabaseConfiguration,
+};
 
 pub struct APIStartupArguments {
     pub api_config: ApiConfiguration,
     pub database_config: DatabaseConfiguration,
+    pub cors: CorsConfiguration,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

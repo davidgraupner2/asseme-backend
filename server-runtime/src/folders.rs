@@ -5,10 +5,10 @@ pub fn home_folder() -> PathBuf {
     current_exe().unwrap().parent().unwrap().to_path_buf()
 }
 
-#[cfg(target_os = "windows")]
-pub fn config_folder() -> PathBuf {
-    home_folder().join("config")
-}
+// #[cfg(target_os = "windows")]
+// pub fn config_folder() -> PathBuf {
+//     home_folder().join("config")
+// }
 
 #[cfg(target_os = "windows")]
 pub fn jobs_folder() -> PathBuf {
@@ -30,10 +30,10 @@ pub fn home_folder() -> PathBuf {
     current_exe().unwrap().parent().unwrap().to_path_buf()
 }
 
-#[cfg(target_os = "linux")]
-pub fn config_folder() -> PathBuf {
-    home_folder().join("config")
-}
+// #[cfg(target_os = "linux")]
+// pub fn config_folder() -> PathBuf {
+//     home_folder().join("config")
+// }
 
 #[cfg(target_os = "linux")]
 pub fn jobs_folder() -> PathBuf {
@@ -55,10 +55,10 @@ pub fn home_folder() -> PathBuf {
     current_exe().unwrap().parent().unwrap().to_path_buf()
 }
 
-#[cfg(target_os = "macos")]
-pub fn config_folder() -> PathBuf {
-    home_folder().join("config")
-}
+// #[cfg(target_os = "macos")]
+// pub fn config_folder() -> PathBuf {
+//     home_folder().join("config")
+// }
 
 #[cfg(target_os = "macos")]
 pub fn jobs_folder() -> PathBuf {
@@ -78,7 +78,7 @@ pub fn logs_folder() -> PathBuf {
 pub fn folders() -> Vec<PathBuf> {
     vec![
         home_folder(),
-        config_folder(),
+        // config_folder(),
         jobs_folder(),
         additional_files_folder(),
     ]

@@ -8,11 +8,10 @@ use axum::http::{HeaderMap, Request, Response, StatusCode};
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
 use bytes::Bytes;
-use http_body_util::Full;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
+use server_config::cors::CorsConfiguration;
 use std::net::{SocketAddr, TcpListener};
 use std::time::Duration;
-use tower::ServiceBuilder;
 use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
 use tracing::event;
 use tracing::Span;
@@ -20,7 +19,9 @@ use tracing::Span;
 pub struct APIActor {}
 
 impl APIActor {
-    fn router(state: AxumApiState) -> Router {
+    fn router(state: AxumApiState, cors: CorsConfiguration) -> Router {
+        let cors_layer = cors.to_cors_layer();
+
         Router::new()
             .nest(
                 "/api",
@@ -33,6 +34,7 @@ impl APIActor {
                     .merge(api_handlers::misc::misc_router()),
             )
             .nest("/agent", api_handlers::agent::agent_router())
+            .layer(cors_layer)
             .with_state(state.into())
     }
 }
@@ -82,7 +84,7 @@ impl Actor for APIActor {
         // Create the API Router
         // - Ensuring we pass in the required shared state
         // - Ensuring Tracing is enabled appropriately
-        let app = Self::router(axum_state.clone()).layer(
+        let app = Self::router(axum_state.clone(), arguments.cors.clone()).layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
                     tracing::info_span!(

@@ -3906,10 +3906,13 @@ dependencies = [
 name = "server-config"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "serde",
  "serde_derive",
  "toml",
+ "tower-http",
  "tracing",
+ "tracing-core",
 ]
 
 [[package]]

@@ -1,6 +1,4 @@
-use crate::{
-    folders::{config_folder, logs_folder},
-};
+use crate::folders::logs_folder;
 use gethostname::gethostname;
 use machineid_rs::{Encryption, HWIDComponent, IdBuilder};
 
@@ -15,13 +13,13 @@ pub fn hostname() -> String {
         .to_string()
 }
 
-pub fn config_file_name() -> String {
-    config_folder()
-        .join("config.toml")
-        .into_os_string()
-        .into_string()
-        .unwrap()
-}
+// pub fn config_file_name() -> String {
+//     config_folder()
+//         .join("config.toml")
+//         .into_os_string()
+//         .into_string()
+//         .unwrap()
+// }
 
 pub fn log_file_name() -> String {
     logs_folder()
@@ -51,4 +49,3 @@ pub fn runtime_id() -> String {
 
     hardware_id_builder.build("agent_id").unwrap()
 }
-
