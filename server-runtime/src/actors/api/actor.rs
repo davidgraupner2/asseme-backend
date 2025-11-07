@@ -1,20 +1,32 @@
 use super::api_handlers;
 use crate::actors::api::{
+    self,
     messages::APIMessage,
     state::{ApiActorState, AxumApiState},
     types::APIStartupArguments,
 };
-use axum::http::{HeaderMap, Request, Response, StatusCode};
+use axum::http::{HeaderMap, HeaderName, Request, Response, StatusCode};
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
 use bytes::Bytes;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
+use serde::ser;
 use server_config::cors::CorsConfiguration;
-use std::net::{SocketAddr, TcpListener};
 use std::time::Duration;
-use tower_http::{classify::ServerErrorsFailureClass, trace::TraceLayer};
+use std::{
+    net::{SocketAddr, TcpListener},
+    sync::Arc,
+};
+use tower::ServiceBuilder;
+use tower_http::request_id::{
+    MakeRequestId, PropagateRequestIdLayer, RequestId, SetRequestIdLayer,
+};
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestId};
+use tower_http::{
+    classify::ServerErrorsFailureClass,
+    trace::{DefaultMakeSpan, DefaultOnResponse, Trace, TraceLayer},
+};
 use tracing::event;
-use tracing::Span;
 
 pub struct APIActor {}
 
@@ -22,19 +34,28 @@ impl APIActor {
     fn router(state: AxumApiState, cors: CorsConfiguration) -> Router {
         let cors_layer = cors.to_cors_layer();
 
-        Router::new()
-            .nest(
-                "/api",
-                Router::new()
-                    .nest("/auth", api_handlers::auth::auth_router())
-                    .nest(
-                        "/tenant",
-                        api_handlers::tenant::tenant_router(state.clone()),
-                    )
-                    .merge(api_handlers::misc::misc_router()),
+        // Header name for where we place the unique request id
+        let x_request_id = HeaderName::from_static("x-request-id");
+
+        // Leverage servicebuilder for our common middleware across all routes
+        let service_builder = ServiceBuilder::new()
+            // Set `x-request-id` header on all requests
+            .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid).clone())
+            // Log requests and response using tracing
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                    .on_response(DefaultOnResponse::new().include_headers(true)),
             )
-            .nest("/agent", api_handlers::agent::agent_router())
-            .layer(cors_layer)
+            // Propogate the `x-request-id` headers from request to response
+            .layer(PropagateRequestIdLayer::new(x_request_id))
+            // Ensures our server is adequately protected
+            .layer(cors_layer);
+
+        Router::new()
+            .merge(api_handlers::api::api_router(state.clone()))
+            .merge(api_handlers::agent::agent_router())
+            .layer(service_builder)
             .with_state(state.into())
     }
 }
@@ -84,68 +105,10 @@ impl Actor for APIActor {
         // Create the API Router
         // - Ensuring we pass in the required shared state
         // - Ensuring Tracing is enabled appropriately
-        let app = Self::router(axum_state.clone(), arguments.cors.clone()).layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<_>| {
-                    tracing::info_span!(
-                        "http_request",
-                        method = %request.method(),
-                        uri = %request.uri(),
-                        version = ?request.version(),
-                        headers = ?request.headers(),
-                    )
-                })
-                .on_request(|request: &Request<_>, _span: &Span| {
-                    tracing::info!(
-                        "Started processing request: {} {} {:?}",
-                        request.method(),
-                        request.uri(),
-                        request.version()
-                    );
-                })
-                .on_response(|response: &Response<_>, latency: Duration, _span: &Span| {
-                    tracing::info!(
-                        status = %response.status(),
-                        latency = ?latency,
-                        headers = ?response.headers(),
-                        "Response completed with status {} in {:?}",
-                        response.status(),
-                        latency
-                    );
-                })
-                .on_body_chunk(|chunk: &Bytes, latency: Duration, _span: &Span| {
-                    tracing::debug!(
-                        chunk_size = chunk.len(),
-                        latency = ?latency,
-                        "Sent {} bytes",
-                        chunk.len()
-                    );
-                })
-                .on_eos(
-                    |trailers: Option<&HeaderMap>, stream_duration: Duration, _span: &Span| {
-                        tracing::debug!(
-                            trailers = ?trailers,
-                            duration = ?stream_duration,
-                            "Request stream completed after {:?}",
-                            stream_duration
-                        );
-                    },
-                )
-                .on_failure(
-                    |error: ServerErrorsFailureClass, latency: Duration, _span: &Span| {
-                        tracing::error!(
-                            error = ?error,
-                            latency = ?latency,
-                            "Request failed with error: {:?} after {:?}",
-                            error,
-                            latency
-                        );
-                    },
-                ),
-        );
+        let app = Self::router(axum_state.clone(), arguments.cors.clone());
 
-        let server = axum_server::from_tcp_rustls(listener, cert_config)
-            .serve(app.into_make_service_with_connect_info::<SocketAddr>());
+        let server =
+            axum_server::from_tcp_rustls(listener, cert_config).serve(app.into_make_service());
 
         tokio::spawn(async move {
             if let Err(e) = server.await {
