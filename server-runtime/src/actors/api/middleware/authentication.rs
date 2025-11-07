@@ -21,10 +21,10 @@ pub async fn authenticated(
 ) -> Result<Response, ApiError> {
     println!("{:#?}", headers);
 
-    println!(
-        "Client IP: {:#?}",
-        get_client_ip(state.behind_proxy, &headers, socket_addr)
-    );
+    // println!(
+    //     "Client IP: {:#?}",
+    //     get_client_ip(state.behind_proxy, &headers, socket_addr)
+    // );
 
     debug!("Extracting bearer token from request");
     let bearer_token = get_bearer_token(headers);

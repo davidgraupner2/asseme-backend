@@ -6,12 +6,15 @@ use crate::actors::api::{
 };
 use axum::http::HeaderName;
 use axum::Router;
+use axum::{extract::ConnectInfo, routing::get};
 use axum_server::tls_rustls::RustlsConfig;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use server_config::cors::CorsConfiguration;
+use std::net::SocketAddr;
 use std::net::TcpListener;
 use std::time::Duration;
 use tower::ServiceBuilder;
+use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
 use tower_http::request_id::MakeRequestUuid;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
@@ -30,6 +33,21 @@ impl APIActor {
         // Header name for where we place the unique request id
         let x_request_id = HeaderName::from_static("x-request-id");
 
+        let governor_conf = GovernorConfigBuilder::default()
+            .per_second(2)
+            .burst_size(5)
+            .finish()
+            .unwrap();
+
+        let governor_limiter = governor_conf.limiter().clone();
+        let interval = Duration::from_secs(60);
+        // a separate background task to clean up
+        std::thread::spawn(move || loop {
+            std::thread::sleep(interval);
+            tracing::info!("rate limiting storage size: {}", governor_limiter.len());
+            governor_limiter.retain_recent();
+        });
+
         // Leverage servicebuilder for our common middleware across all routes
         let service_builder = ServiceBuilder::new()
             // Set `x-request-id` header on all requests
@@ -46,7 +64,8 @@ impl APIActor {
             // Ensures our server is adequately protected
             .layer(cors_layer)
             // Compress responses based on the `Accept-Encoding` header
-            .layer(CompressionLayer::new());
+            .layer(CompressionLayer::new())
+            .layer(GovernorLayer::new(governor_conf));
 
         Router::new()
             .merge(api_handlers::api::api_router(state.clone()))
@@ -117,6 +136,9 @@ impl Actor for APIActor {
             }
             6
         });
+
+        //#TODO Get IP Extract to work
+        // - https://github.com/benwis/tower-governor?tab=readme-ov-file
 
         Ok(state)
     }
