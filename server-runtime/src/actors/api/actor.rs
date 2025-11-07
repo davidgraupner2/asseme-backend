@@ -1,30 +1,23 @@
 use super::api_handlers;
 use crate::actors::api::{
-    self,
     messages::APIMessage,
     state::{ApiActorState, AxumApiState},
     types::APIStartupArguments,
 };
-use axum::http::{HeaderMap, HeaderName, Request, Response, StatusCode};
+use axum::http::HeaderName;
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
-use bytes::Bytes;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use serde::ser;
 use server_config::cors::CorsConfiguration;
+use std::net::TcpListener;
 use std::time::Duration;
-use std::{
-    net::{SocketAddr, TcpListener},
-    sync::Arc,
-};
 use tower::ServiceBuilder;
-use tower_http::request_id::{
-    MakeRequestId, PropagateRequestIdLayer, RequestId, SetRequestIdLayer,
-};
-use tower_http::request_id::{MakeRequestUuid, PropagateRequestId};
+use tower_http::request_id::MakeRequestUuid;
+use tower_http::timeout::TimeoutLayer;
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tower_http::{
-    classify::ServerErrorsFailureClass,
-    trace::{DefaultMakeSpan, DefaultOnResponse, Trace, TraceLayer},
+    compression::CompressionLayer,
+    request_id::{PropagateRequestIdLayer, SetRequestIdLayer},
 };
 use tracing::event;
 
@@ -40,6 +33,7 @@ impl APIActor {
         // Leverage servicebuilder for our common middleware across all routes
         let service_builder = ServiceBuilder::new()
             // Set `x-request-id` header on all requests
+            // Won't override the header if a request id is already set
             .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid).clone())
             // Log requests and response using tracing
             .layer(
@@ -50,12 +44,19 @@ impl APIActor {
             // Propogate the `x-request-id` headers from request to response
             .layer(PropagateRequestIdLayer::new(x_request_id))
             // Ensures our server is adequately protected
-            .layer(cors_layer);
+            .layer(cors_layer)
+            // Compress responses based on the `Accept-Encoding` header
+            .layer(CompressionLayer::new());
 
         Router::new()
             .merge(api_handlers::api::api_router(state.clone()))
             .merge(api_handlers::agent::agent_router())
             .layer(service_builder)
+            // Apply timeout separately to avoid trait bound issues
+            // - This layer ensure all request complete within a specified time or they are timed out
+            .layer(TimeoutLayer::new(Duration::from_secs(
+                state.request_timeout_secs,
+            )))
             .with_state(state.into())
     }
 }

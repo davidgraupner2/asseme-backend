@@ -22,6 +22,7 @@ pub struct AxumApiState {
     pub db_config: DatabaseConfiguration,
     pub broadcast_tx: Arc<Mutex<Sender<Message>>>,
     pub behind_proxy: bool,
+    pub request_timeout_secs: u64,
 }
 
 impl AxumApiState {
@@ -48,6 +49,7 @@ impl AxumApiState {
             db_config: database_config.clone(),
             broadcast_tx: Arc::new(Mutex::new(tx)),
             behind_proxy: api_configuration.behind_proxy,
+            request_timeout_secs: api_configuration.request_timeout_secs,
         }
     }
 }
