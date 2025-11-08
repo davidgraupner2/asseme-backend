@@ -3,18 +3,18 @@ use crate::actors::api::{
     messages::APIMessage,
     state::{ApiActorState, AxumApiState},
     types::APIStartupArguments,
+    utils::get_request_id_header_name,
 };
-use axum::http::HeaderName;
 use axum::Router;
-use axum::{extract::ConnectInfo, routing::get};
 use axum_server::tls_rustls::RustlsConfig;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use server_config::cors::CorsConfiguration;
 use std::net::SocketAddr;
-use std::net::TcpListener;
 use std::time::Duration;
 use tower::ServiceBuilder;
-use tower_governor::{governor::GovernorConfigBuilder, GovernorLayer};
+use tower_governor::{
+    governor::GovernorConfigBuilder, key_extractor::SmartIpKeyExtractor, GovernorLayer,
+};
 use tower_http::request_id::MakeRequestUuid;
 use tower_http::timeout::TimeoutLayer;
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
@@ -30,18 +30,21 @@ impl APIActor {
     fn router(state: AxumApiState, cors: CorsConfiguration) -> Router {
         let cors_layer = cors.to_cors_layer();
 
-        // Header name for where we place the unique request id
-        let x_request_id = HeaderName::from_static("x-request-id");
-
+        // Setup the standard rate limiting configuration
+        // - We are utilising [tower-governor](https://github.com/benwis/tower-governor/)
+        // - This is limited per client IP Address
         let governor_conf = GovernorConfigBuilder::default()
-            .per_second(2)
-            .burst_size(5)
+            .per_second(state.rate_limiting_per_second)
+            .burst_size(state.rate_limiting_burst_size)
+            .key_extractor(SmartIpKeyExtractor)
+            .use_headers()
             .finish()
             .unwrap();
 
+        // Initialise a seperate background task to cleanup old tracking entries in RAM
+        // - This avoids over consumption of RAM when tracking previous API requests
         let governor_limiter = governor_conf.limiter().clone();
-        let interval = Duration::from_secs(60);
-        // a separate background task to clean up
+        let interval = Duration::from_secs(state.rate_limiting_cleanup_duration);
         std::thread::spawn(move || loop {
             std::thread::sleep(interval);
             tracing::info!("rate limiting storage size: {}", governor_limiter.len());
@@ -60,7 +63,7 @@ impl APIActor {
                     .on_response(DefaultOnResponse::new().include_headers(true)),
             )
             // Propogate the `x-request-id` headers from request to response
-            .layer(PropagateRequestIdLayer::new(x_request_id))
+            .layer(PropagateRequestIdLayer::new(get_request_id_header_name()))
             // Ensures our server is adequately protected
             .layer(cors_layer)
             // Compress responses based on the `Accept-Encoding` header
@@ -120,25 +123,23 @@ impl Actor for APIActor {
 
         // Start the Web Server
         let listener =
-            TcpListener::bind(format!("0.0.0.0:{}", arguments.api_config.port.clone())).unwrap();
+            std::net::TcpListener::bind(format!("0.0.0.0:{}", arguments.api_config.port.clone()))
+                .unwrap();
 
         // Create the API Router
         // - Ensuring we pass in the required shared state
         // - Ensuring Tracing is enabled appropriately
         let app = Self::router(axum_state.clone(), arguments.cors.clone());
 
-        let server =
-            axum_server::from_tcp_rustls(listener, cert_config).serve(app.into_make_service());
+        // Use axum-server with TLS and connection info for IP extraction
+        let server = axum_server::from_tcp_rustls(listener, cert_config)
+            .serve(app.into_make_service_with_connect_info::<SocketAddr>());
 
         tokio::spawn(async move {
             if let Err(e) = server.await {
                 eprintln!("Server error: {}", e);
             }
-            6
         });
-
-        //#TODO Get IP Extract to work
-        // - https://github.com/benwis/tower-governor?tab=readme-ov-file
 
         Ok(state)
     }

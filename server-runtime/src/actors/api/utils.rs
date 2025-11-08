@@ -1,5 +1,11 @@
-use axum::http::HeaderMap;
+use axum::http::{HeaderMap, HeaderName};
 use std::net::{IpAddr, SocketAddr};
+
+// Return the header name we will use to store the request id
+// for each call to the api
+pub fn get_request_id_header_name() -> HeaderName {
+    HeaderName::from_static("x-request-id")
+}
 
 pub fn get_client_ip(behind_proxy: bool, headers: &HeaderMap, socket_addr: SocketAddr) -> IpAddr {
     if behind_proxy {

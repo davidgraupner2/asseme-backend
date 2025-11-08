@@ -23,6 +23,9 @@ pub struct AxumApiState {
     pub broadcast_tx: Arc<Mutex<Sender<Message>>>,
     pub behind_proxy: bool,
     pub request_timeout_secs: u64,
+    pub rate_limiting_burst_size: u32,
+    pub rate_limiting_per_second: u64,
+    pub rate_limiting_cleanup_duration: u64,
 }
 
 impl AxumApiState {
@@ -50,6 +53,9 @@ impl AxumApiState {
             broadcast_tx: Arc::new(Mutex::new(tx)),
             behind_proxy: api_configuration.behind_proxy,
             request_timeout_secs: api_configuration.request_timeout_secs,
+            rate_limiting_burst_size: api_configuration.rate_limiting_burst_size,
+            rate_limiting_cleanup_duration: api_configuration.rate_limiting_cleanup_duration,
+            rate_limiting_per_second: api_configuration.rate_limiting_per_second,
         }
     }
 }
