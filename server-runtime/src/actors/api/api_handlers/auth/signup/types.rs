@@ -1,7 +1,6 @@
 // signup/types.rs
 use database::model::{tenant::Tenant, user::User};
 use serde::{Deserialize, Serialize};
-use surrealdb::Object;
 
 use crate::common::is_valid_email_format;
 

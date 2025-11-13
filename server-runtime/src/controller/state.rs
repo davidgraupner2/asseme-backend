@@ -13,7 +13,7 @@ pub struct ControllerState {
 
 impl ControllerState {
     pub fn new() -> Self {
-        let config = Config::load();
+        let config = Config::from_env();
 
         Self {
             config,

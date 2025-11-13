@@ -35,3 +35,6 @@ http-body-util="0.1"
 bytes="1.10"
 tower="0.5"
 tower_governor="0.8"
+utoipa = { version = "5.4", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "9.0", features = ["axum","vendored","reqwest"] }
+async-trait="0.1"

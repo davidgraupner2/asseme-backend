@@ -6,7 +6,7 @@ use std::sync::Arc;
 pub fn api_router(state: AxumApiState) -> Router<Arc<AxumApiState>> {
     // Create the API Routes
     let api = Router::new()
-        .nest("/auth", api_handlers::auth::auth_router())
+        .nest("/auth", api_handlers::auth::routes::auth_router())
         .nest(
             "/tenant",
             api_handlers::tenant::tenant_router(state.clone()),

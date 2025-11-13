@@ -1,4 +1,4 @@
-use super::api_handlers;
+use crate::actors::api::routes::routes::api_router;
 use crate::actors::api::{
     messages::APIMessage,
     state::{ApiActorState, AxumApiState},
@@ -33,7 +33,7 @@ impl APIActor {
         // Setup the standard rate limiting configuration
         // - We are utilising [tower-governor](https://github.com/benwis/tower-governor/)
         // - This is limited per client IP Address
-        let governor_conf = GovernorConfigBuilder::default()
+        let rate_limiter_config = GovernorConfigBuilder::default()
             .per_second(state.rate_limiting_per_second)
             .burst_size(state.rate_limiting_burst_size)
             .key_extractor(SmartIpKeyExtractor)
@@ -43,16 +43,16 @@ impl APIActor {
 
         // Initialise a seperate background task to cleanup old tracking entries in RAM
         // - This avoids over consumption of RAM when tracking previous API requests
-        let governor_limiter = governor_conf.limiter().clone();
+        let rate_limiter = rate_limiter_config.limiter().clone();
         let interval = Duration::from_secs(state.rate_limiting_cleanup_duration);
         std::thread::spawn(move || loop {
             std::thread::sleep(interval);
-            tracing::info!("rate limiting storage size: {}", governor_limiter.len());
-            governor_limiter.retain_recent();
+            tracing::info!("rate limiting storage size: {}", rate_limiter.len());
+            rate_limiter.retain_recent();
         });
 
         // Leverage servicebuilder for our common middleware across all routes
-        let service_builder = ServiceBuilder::new()
+        let middleware_stack = ServiceBuilder::new()
             // Set `x-request-id` header on all requests
             // Won't override the header if a request id is already set
             .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid).clone())
@@ -68,14 +68,16 @@ impl APIActor {
             .layer(cors_layer)
             // Compress responses based on the `Accept-Encoding` header
             .layer(CompressionLayer::new())
-            .layer(GovernorLayer::new(governor_conf));
+            // Add rate limiting
+            .layer(GovernorLayer::new(rate_limiter_config));
 
         Router::new()
-            .merge(api_handlers::api::api_router(state.clone()))
-            .merge(api_handlers::agent::agent_router())
-            .layer(service_builder)
+            .merge(api_router(state.clone()))
+            // .merge(api_handlers::api::api_router(state.clone()))
+            // .merge(api_handlers::agent::agent_router())
+            .layer(middleware_stack)
             // Apply timeout separately to avoid trait bound issues
-            // - This layer ensure all request complete within a specified time or they are timed out
+            // - This layer ensures all request complete within a specified time or they are timed out
             .layer(TimeoutLayer::new(Duration::from_secs(
                 state.request_timeout_secs,
             )))

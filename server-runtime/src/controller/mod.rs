@@ -4,7 +4,7 @@ mod state;
 use crate::actors::api::actor::APIActor;
 use crate::actors::api::types::APIStartupArguments;
 // use crate::common::check_db_health;
-use crate::{common::bootstrap_runtime, properties::runtime_id};
+use crate::{common::bootstrap::bootstrap_runtime, properties::runtime_id};
 use messages::ControllerMessage;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use state::ControllerState;
@@ -142,7 +142,7 @@ impl Actor for Controller {
             ControllerMessage::ReloadConfig => {
                 event!(tracing::Level::INFO, "Reloading configuration...");
                 // Reload configuration from file
-                state.config = server_config::Config::load();
+                state.config = server_config::Config::from_env();
             }
             ControllerMessage::RecreateDatabase => {
                 event!(tracing::Level::WARN, "Recreating database...");

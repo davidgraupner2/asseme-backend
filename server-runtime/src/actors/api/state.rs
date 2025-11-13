@@ -1,8 +1,10 @@
+use crate::actors::api::repositories::auth_repository::SurrealAuthRepository;
+use crate::actors::api::services::auth_service::{AuthService, AuthServiceTrait};
+use crate::actors::api::services::email_service::StandardEmailService;
 use crate::{actors::ActorStatus, properties::runtime_id};
 use axum::extract::ws::Message;
 use database::{self, context::get_database};
 use server_config::api::ApiConfiguration;
-use server_config::cors::CorsConfiguration;
 use server_config::database::DatabaseConfiguration;
 use std::sync::Arc;
 use surrealdb::{engine::remote::ws::Client, Surreal};
@@ -26,6 +28,7 @@ pub struct AxumApiState {
     pub rate_limiting_burst_size: u32,
     pub rate_limiting_per_second: u64,
     pub rate_limiting_cleanup_duration: u64,
+    pub auth_service: Arc<dyn AuthServiceTrait>,
 }
 
 impl AxumApiState {
@@ -35,6 +38,7 @@ impl AxumApiState {
     ) -> Self {
         let (tx, _) = broadcast::channel(32);
 
+        // Create the database client for SurrealDB
         let db_client = get_database(
             database_config.connection_type.clone(),
             database_config.url.clone(),
@@ -46,6 +50,12 @@ impl AxumApiState {
         .await
         .unwrap();
 
+        // Create repository and service dependencies
+        let auth_repo = SurrealAuthRepository::new(db_client.clone());
+        let email_service = StandardEmailService;
+
+        let auth_service = Arc::new(AuthService::new(auth_repo, email_service));
+
         Self {
             id: runtime_id(),
             db_client,
@@ -56,6 +66,7 @@ impl AxumApiState {
             rate_limiting_burst_size: api_configuration.rate_limiting_burst_size,
             rate_limiting_cleanup_duration: api_configuration.rate_limiting_cleanup_duration,
             rate_limiting_per_second: api_configuration.rate_limiting_per_second,
+            auth_service,
         }
     }
 }
