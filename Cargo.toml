@@ -1,0 +1,25 @@
+[workspace]
+# Using the latest resolver for dependency resolution
+resolver="2"
+
+# Members of this project workspace
+members = ["server-config", "server-config-loaders", "server-runtime", "server/linux"]
+
+# Exluded from this project workspace
+exclude = []
+
+# Packages to operate on when a specific package wasn't selected
+default-members = ["server/linux"]
+
+# Override properties for each package in the workspace
+[workspace.package]
+authors = ["David Graupner"]
+homepage = "https://asseme.dev.dagdev.net"
+categories = ["command-line-utilities"]
+edition="2021"
+license-file = "LICENSE"
+rust-version="1.91.0"
+repository = "https://github.com/davidgraupner2/asseme-backend"
+
+[workspace.metadata.release]
+changelog = "CHANGELOG.md"
