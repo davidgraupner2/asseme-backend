@@ -1,39 +1,16 @@
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoggingConfiguration {
-    pub log_level: LoggingLevel,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum LoggingLevel {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-}
-
-impl FromStr for LoggingLevel {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "TRACE" => Ok(LoggingLevel::INFO),
-            "DEBUG" => Ok(LoggingLevel::DEBUG),
-            "INFO" => Ok(LoggingLevel::INFO),
-            "WARN" => Ok(LoggingLevel::WARN),
-            "ERROR" => Ok(LoggingLevel::ERROR),
-            _ => Ok(LoggingLevel::INFO),
-        }
-    }
+    pub log_format: String,
+    pub log_output: String,
 }
 
 impl LoggingConfiguration {
     pub fn default() -> Self {
         Self {
-            log_level: LoggingLevel::INFO,
+            log_format: "json".to_string(),
+            log_output: "console".to_string(),
         }
     }
 }

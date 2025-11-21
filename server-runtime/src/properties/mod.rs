@@ -1,22 +1,22 @@
-pub mod files;
 pub mod folders;
 
+use crate::properties::folders::Folders;
 use machineid_rs::{Encryption, HWIDComponent, IdBuilder};
 use std::sync::OnceLock;
 use sysinfo::System;
 
-use crate::properties::{files::Files, folders::Folders};
+// Global var to store runtime properties
 static RUNTIME_PROPERTIES: OnceLock<RuntimeProperties> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct RuntimeProperties {
+    app_name: Box<str>,
     version: Box<str>,
-    name: Box<str>,
+    machine_name: Box<str>,
     host_name: Box<str>,
     exe_name: Box<str>,
     id: Box<str>,
     folders: Box<Folders>,
-    files: Box<Files>,
 }
 
 impl RuntimeProperties {
@@ -77,16 +77,15 @@ impl RuntimeProperties {
             .into_boxed_str();
         let id = runtime_id().into_boxed_str();
         let folders = Box::new(Folders::new(app_name.to_lowercase().as_str()).ensure_exists());
-        let files = Box::new(Files::new(app_name.to_lowercase().as_str(), folders.logs()));
 
         Self {
+            app_name: app_name.into(),
             version,
-            name,
+            machine_name: name,
             host_name,
             exe_name,
             id,
             folders,
-            files,
         }
     }
 
@@ -113,16 +112,15 @@ impl RuntimeProperties {
         let folders = Box::new(
             Folders::new_with_base(app_name.to_lowercase().as_str(), base).ensure_exists(),
         );
-        let files = Box::new(Files::new(app_name.to_lowercase().as_str(), folders.logs()));
 
         Self {
+            app_name: app_name.into(),
             version,
-            name,
+            machine_name: name,
             host_name,
             exe_name,
             id,
             folders,
-            files,
         }
     }
 
@@ -131,7 +129,7 @@ impl RuntimeProperties {
         &self.version
     }
     pub fn name(&self) -> &str {
-        &self.name
+        &self.machine_name
     }
     pub fn host_name(&self) -> &str {
         &self.host_name
@@ -145,8 +143,8 @@ impl RuntimeProperties {
     pub fn folders(&self) -> &Folders {
         &self.folders
     }
-    pub fn files(&self) -> &Files {
-        &self.files
+    pub fn app_name(&self) -> &str {
+        &self.app_name
     }
 }
 

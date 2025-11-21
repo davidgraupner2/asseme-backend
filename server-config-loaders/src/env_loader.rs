@@ -1,9 +1,9 @@
 use server_config::{
     ApiConfiguration, CorsConfiguration, CorsMode, LoadApiConfiguration, LoadCorsConfiguration,
-    LoadLoggingConfiguration, LoadRateLimitingConfiguration, LoggingConfiguration, LoggingLevel,
+    LoadLoggingConfiguration, LoadRateLimitingConfiguration, LoggingConfiguration,
     RateLimitingConfiguration,
 };
-use std::{env, str::FromStr};
+use std::env;
 
 pub struct EnvServerConfigLoader;
 
@@ -119,12 +119,8 @@ impl LoadLoggingConfiguration for EnvServerConfigLoader {
     fn load_config(&self) -> LoggingConfiguration {
         let mut logging_configuration = LoggingConfiguration::default();
 
-        logging_configuration.log_level = LoggingLevel::from_str(
-            &env::var("LOG_LEVEL")
-                .unwrap_or("INFO".to_string())
-                .to_uppercase(),
-        )
-        .unwrap_or(LoggingLevel::INFO);
+        logging_configuration.log_format = env::var("LOG_FORMAT").unwrap_or("pretty".to_string());
+        logging_configuration.log_output = env::var("LOG_OUTPUT").unwrap_or("console".to_string());
 
         logging_configuration
     }

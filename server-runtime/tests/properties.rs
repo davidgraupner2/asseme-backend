@@ -38,10 +38,6 @@ fn new_with_base_populates_fields_and_paths() {
     assert!(supp.exists(), "supp dir should exist");
     assert!(jobs.exists(), "jobs dir should exist");
 
-    // Files: log filename should be base.join("<app>.log")
-    let expected_log = base.join("logs").join(format!("{}.log", app_name));
-    assert_eq!(props.files().log_file_name(), expected_log.as_path());
-
     // Cleanup
     let _ = std::fs::remove_dir_all(&base);
 }

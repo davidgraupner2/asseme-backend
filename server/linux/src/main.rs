@@ -1,9 +1,10 @@
+use ractor::Actor;
 use server_config::{
     LoadApiConfiguration, LoadCorsConfiguration, LoadLoggingConfiguration,
     LoadRateLimitingConfiguration,
 };
 use server_config_loaders::env_loader::EnvServerConfigLoader;
-use server_runtime::RuntimeProperties;
+use server_runtime::{RuntimeController, RuntimeControllerArguments, RuntimeProperties};
 use tokio::signal;
 use tracing::info;
 
@@ -11,17 +12,6 @@ use tracing::info;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialise the rumtime properties we will be leveraging
     RuntimeProperties::init("Asseme");
-
-    println!(
-        "ID: {:?}, name: {:?}, host_name: {:?}, version: {:?}, exe: {:?}, jobs: {:?}, log_file_name: {:?}",
-        RuntimeProperties::global().id(),
-        RuntimeProperties::global().name(),
-        RuntimeProperties::global().host_name(),
-        RuntimeProperties::global().version(),
-        RuntimeProperties::global().exe_name(),
-        RuntimeProperties::global().folders().jobs(),
-        RuntimeProperties::global().files().log_file_name()
-    );
 
     let env_loader = EnvServerConfigLoader::new();
 
@@ -34,8 +24,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use configs to set up your server
     info!("Starting server on port {}", api_config.port);
     println!("Starting server on port {}", api_config.port);
-    println!("Log level: {:?}", logging_config.log_level);
     println!("CORS mode: {:?}", cors_config.mode);
+
+    // Create the arguments we need to pass to the controller runtime
+    let runtime_controller_args = RuntimeControllerArguments {
+        log_format: logging_config.log_format,
+        log_output: logging_config.log_output,
+    };
+
+    // Start the runtime controller
+    let (_actor, _actor_handle) = Actor::spawn(
+        Some("RuntimeController".to_string()),
+        RuntimeController,
+        runtime_controller_args,
+    )
+    .await
+    .expect("RuntimeController failed to start");
 
     // Wait here until we receive a CTRL-C Signal break
     signal::ctrl_c().await.expect("Failed to wait");
