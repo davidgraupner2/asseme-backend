@@ -14,6 +14,14 @@ sysinfo = "0.37.2"
 machineid-rs="1.2.4"
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
-tracing-subscriber = {version="0.3.20", features = ["json","ansi","env-filter","fmt","local-time"]}
+tracing-subscriber = {version="0.3.20", features = ["std", "json","ansi","env-filter","fmt","local-time"]}
 ractor="0.15"
+# ractor-supervisor = "0.1.9"
 rustls = { version = "0.23", features = ["ring"] }
+axum = { version = "0.8", features = ["macros","ws"] }
+tower-http={version="0.6", features = ["trace","request-id","compression-gzip","timeout"]}
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }
+server-config={path="../server-config"}
+axum-server= {version="0.7", features = ["tls-rustls"]}

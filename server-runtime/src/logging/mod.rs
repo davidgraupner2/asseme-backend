@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
-use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{fmt, prelude::*, registry::Registry};
+use tracing_subscriber::{reload, EnvFilter};
 
 pub(crate) mod format;
 pub(crate) mod output;
