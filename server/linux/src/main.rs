@@ -27,6 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         log_output: logging_config.log_output,
         api_configuration: api_config,
         cors_configuration: cors_config,
+        rate_limiting_configuration: rate_limit_config,
     };
 
     // Start the runtime controller

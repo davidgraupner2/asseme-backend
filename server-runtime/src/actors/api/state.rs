@@ -1,9 +1,9 @@
+use crate::RuntimeProperties;
 use axum::extract::ws::Message;
 use std::sync::Arc;
 use tokio::sync::broadcast;
+use tokio::sync::oneshot;
 use tokio::sync::{broadcast::Sender, Mutex};
-
-use crate::RuntimeProperties;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ApiState {
@@ -38,11 +38,13 @@ impl V1ApiState {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct ApiActorState {}
+#[derive(Debug)]
+pub struct ApiActorState {
+    pub shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+}
 
 impl ApiActorState {
     pub fn new() -> Self {
-        Self {}
+        Self { shutdown_tx: None }
     }
 }

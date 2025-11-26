@@ -4,10 +4,12 @@ use crate::{
     actors::{
         api::{
             actor::{ApiActor, ApiStartupArguments},
+            v1::handlers::info,
             ApiMessage,
         },
         controller::{
             arguments::ControllerArguments, messages::ControllerMessage, state::ControllerState,
+            ACTOR_API_SERVER_NAME,
         },
     },
     logging::initialise_logging,
@@ -17,7 +19,7 @@ use ractor::concurrency::Duration;
 use ractor::Actor;
 use ractor::{ActorProcessingErr, ActorRef};
 // use ractor_supervisor::*;
-use server_config::{ApiConfiguration, CorsConfiguration};
+use server_config::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use tokio::time::Instant;
 use tracing::{debug, error, event, info, instrument, trace, warn, Level};
 
@@ -43,8 +45,11 @@ impl Actor for Controller {
             .ok(); // Ignore error if already installed
 
         // Initialise our state
-        let mut state =
-            ControllerState::new(arguments.api_configuration, arguments.cors_configuration);
+        let mut state = ControllerState::new(
+            arguments.api_configuration,
+            arguments.cors_configuration,
+            arguments.rate_limiting_configuration,
+        );
 
         // Setup Logging
         let tracing_worker_guards = initialise_logging(
@@ -78,12 +83,14 @@ impl Actor for Controller {
             myself,
             state.api_configuration.clone(),
             state.cors_configuration.clone(),
+            state.rate_limiter_config.clone(),
         )
         .await;
 
         Ok(())
     }
 
+    #[instrument(name = "Controller_Supervision_Handler", level = "trace")]
     async fn handle_supervisor_evt(
         &self,
         myself: ActorRef<Self::Msg>,
@@ -91,9 +98,61 @@ impl Actor for Controller {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         match message {
-            _ => {
-                dbg!("Supervisor event received: {:?}", message);
-                // warn!("Supervisor event received: {:?}", message);
+            ractor::SupervisionEvent::ActorStarted(actor_cell) => {
+                let name = actor_cell
+                    .get_name()
+                    .unwrap_or_else(|| "unknown".to_string());
+                info!(
+                    actor = %name,
+                    id = %actor_cell.get_id(),
+                    "actor started"
+                );
+            }
+            ractor::SupervisionEvent::ActorTerminated(actor_cell, boxed_state, _) => {
+                let name = actor_cell
+                    .get_name()
+                    .unwrap_or_else(|| "unknown".to_string());
+                info!(
+                    actor = %name,
+                    id = %actor_cell.get_id(),
+                    status = ?boxed_state,
+                    "actor terminated"
+                );
+            }
+            ractor::SupervisionEvent::ActorFailed(actor_cell, error) => {
+                let name = actor_cell
+                    .get_name()
+                    .unwrap_or_else(|| "unknown".to_string());
+                warn!(
+                    actor = %name,
+                    id = %actor_cell.get_id(),
+                    error = %error,
+                    "actor failed - attempting restart"
+                );
+
+                // Log restart attempt, perform restart and log success/failure
+                // spawn a task to not block the supervision handler
+                let ctrl = myself.clone();
+                let api_cfg = state.api_configuration.clone();
+                let cors_cfg = state.cors_configuration.clone();
+                let rate_cfg = state.rate_limiter_config.clone();
+
+                // Fire-and-forget restart task; capture join result and log later
+                if name == ACTOR_API_SERVER_NAME {
+                    tokio::spawn(async move {
+                        let restarted = start_api_server(ctrl, api_cfg, cors_cfg, rate_cfg).await;
+                        match restarted {
+                            Some(_) => info!(actor = %name, "actor restart succeeded"),
+                            None => error!(actor = %name, "actor restart failed"),
+                        }
+                    });
+                }
+            }
+            ractor::SupervisionEvent::ProcessGroupChanged(group_change_message) => {
+                info!(
+                    message = ?group_change_message,
+                    "Process group changed"
+                )
             }
         }
         Ok(())
@@ -101,95 +160,30 @@ impl Actor for Controller {
 }
 
 // Starts the API Server
+#[instrument(name = "Controller - Start Api Server", level = "trace")]
 async fn start_api_server(
     controller: ActorRef<ControllerMessage>,
     api_config: ApiConfiguration,
     cors_config: CorsConfiguration,
+    rate_limiter_config: RateLimitingConfiguration,
 ) -> Option<ActorRef<ApiMessage>> {
     // Start the API Server as a linked actor i.e. Controller is the supervisor
-    let api_server = controller
+    match controller
         .spawn_linked(
-            Some("Api Server".to_string()),
+            Some(ACTOR_API_SERVER_NAME.to_string()),
             ApiActor {},
             ApiStartupArguments {
                 api_config: api_config.clone(),
                 cors: cors_config.clone(),
+                rate_limiting: rate_limiter_config.clone(),
             },
         )
-        .await;
-
-    match api_server {
-        Ok((actor_ref, join_handle)) => Some(actor_ref),
+        .await
+    {
+        Ok(result) => Some(result.0),
         Err(error) => {
-            event!(
-                Level::ERROR,
-                "Api Server could not be started! - {:#?}",
-                error
-            );
+            error!(errorMsg = %error, "Error spawning {}", ACTOR_API_SERVER_NAME);
             None
         }
     }
 }
-
-// A child-level backoff function that implements exponential backoff after the second failure.
-// Return Some(delay) to make the supervisor wait before restarting this child.
-// fn actor_supervision_backoff_strategy() -> ChildBackoffFn {
-//     ChildBackoffFn::new(
-//         |_child_id: &str,
-//          restart_count: usize,
-//          last_fail: Instant,
-//          child_reset_after: Option<Duration>| {
-//             // On the first failure, restart immediately (None).
-//             // After the second failure, double the delay each time (exponential).
-//             if restart_count <= 1 {
-//                 None
-//             } else {
-//                 Some(Duration::from_secs(1 << restart_count))
-//             }
-//         },
-//     )
-// }
-
-// // This actor supervision specification describes exactly how to manage our single API actor.
-// fn api_actor_restart_strategy() -> ChildSpec {
-//     ChildSpec {
-//         id: "api_server".into(), // Unique identifier for meltdown logs and debugging.
-//         restart: Restart::Transient, // Only restart if the child fails abnormally.
-//         spawn_fn: SpawnFn::new(|cell, id| spawn_api_server(cell, id)),
-//         backoff_fn: Some(actor_supervision_backoff_strategy()), // Apply our custom exponential backoff on restarts.
-//         // If the child remains up for 60s, its individual failure counter resets to 0 next time it fails.
-//         reset_after: Some(Duration::from_secs(60)),
-//     }
-// }
-
-// // Supervisor-level meltdown configuration. If more than 5 restarts occur within a 10s window, meltdown is triggered.
-// // Also, if we stay quiet for 30s (no restarts), the meltdown log resets.
-// fn supervision_meltdown_strategy() -> SupervisorOptions {
-//     SupervisorOptions {
-//         strategy: SupervisorStrategy::OneForOne, // If one child fails, only that child is restarted.
-//         max_restarts: 5,                         // Permit up to 5 restarts in the meltdown window.
-//         max_window: Duration::from_secs(10),     // The meltdown window.
-//         reset_after: Some(Duration::from_secs(30)), // If no failures for 30s, meltdown log is cleared.
-//     }
-// }
-
-// // Group all child actor specifications and meltdown options together:
-// fn supervisor_arguments() -> SupervisorArguments {
-//     // Group all Child Specifications together
-//     let child_specs = vec![api_actor_restart_strategy()];
-
-//     SupervisorArguments {
-//         child_specs: child_specs,
-//         options: supervision_meltdown_strategy(),
-//     }
-// }
-
-// // Spawn the actor supervisor
-// async fn spawn_actor_supervisor() -> Result<ActorRef<SupervisorMsg>, Box<dyn Error>> {
-//     let (supervisor, _join_handle) = Supervisor::spawn(
-//         "root".into(), // name for the supervisor
-//         supervisor_arguments(),
-//     )
-//     .await?;
-//     Ok(supervisor)
-// }

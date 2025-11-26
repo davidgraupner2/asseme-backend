@@ -1,4 +1,4 @@
+#[derive(Debug)]
 pub enum ApiMessage {
-    Restart,
-    Shutdown,
+    TriggerPanic,
 }
