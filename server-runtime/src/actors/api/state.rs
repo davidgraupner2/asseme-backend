@@ -1,8 +1,9 @@
+use crate::actors::api::v1::handlers::agent::types::AgentRegistry;
 use crate::RuntimeProperties;
 use axum::extract::ws::Message;
+use dashmap::DashMap;
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tokio::sync::oneshot;
 use tokio::sync::{broadcast::Sender, Mutex};
 
 #[derive(Clone, Debug)]
@@ -26,14 +27,21 @@ impl ApiState {
 #[derive(Clone, Debug)]
 pub(crate) struct V1ApiState {
     pub id: String,
+    pub agent_registry: AgentRegistry,
+    pub agent_ping_interval: u64,
+    pub agent_ping_timeout: u64,
 }
 
 impl V1ApiState {
-    pub fn new() -> Self {
+    pub fn new(agent_ping_interval: u64, agent_ping_timeout: u64) -> Self {
         let runtime_properties = RuntimeProperties::global();
+        let agent_registry: AgentRegistry = Arc::new(DashMap::new());
 
         Self {
             id: format!("api:v1:{}", runtime_properties.id()),
+            agent_registry,
+            agent_ping_interval,
+            agent_ping_timeout,
         }
     }
 }

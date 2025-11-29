@@ -65,10 +65,21 @@ impl LoadApiConfiguration for EnvServerConfigLoader {
             .unwrap_or(api_configuration.behind_proxy.to_string())
             .parse()
             .unwrap_or(api_configuration.behind_proxy);
+
         api_configuration.request_timeout_secs = env::var("API_REQUEST_TIMEOUT_SECS")
             .unwrap_or(api_configuration.request_timeout_secs.to_string())
             .parse()
             .unwrap_or(api_configuration.request_timeout_secs);
+
+        api_configuration.agent_ping_interval = env::var("API_AGENT_PING_INTERVAL")
+            .unwrap_or(api_configuration.agent_ping_interval.to_string())
+            .parse()
+            .unwrap_or(api_configuration.agent_ping_interval);
+
+        api_configuration.agent_ping_timeout = env::var("API_AGENT_PING_TIMEOUT")
+            .unwrap_or(api_configuration.agent_ping_timeout.to_string())
+            .parse()
+            .unwrap_or(api_configuration.agent_ping_timeout);
 
         api_configuration
     }

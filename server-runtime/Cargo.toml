@@ -16,7 +16,6 @@ tracing = "0.1.41"
 tracing-appender = "0.2.3"
 tracing-subscriber = {version="0.3.20", features = ["std", "json","ansi","env-filter","fmt","local-time"]}
 ractor="0.15"
-# ractor-supervisor = "0.1.9"
 rustls = { version = "0.23", features = ["ring"] }
 axum = { version = "0.8", features = ["macros","ws","tokio","http2"] }
 tower-http={version="0.6", features = ["trace","request-id","compression-gzip","timeout"]}
@@ -27,3 +26,8 @@ server-config={path="../server-config"}
 axum-server= {version="0.7", features = ["tls-rustls"]}
 tower_governor="0.8"
 tower="0.5"
+futures-util ="0.3"
+dashmap="6.1"
+chrono="0.4"
+futures="0.3"
+uuid="1.18"
