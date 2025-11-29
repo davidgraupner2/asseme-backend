@@ -11,7 +11,7 @@ use tracing::info;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialise the rumtime properties we will be leveraging
-    RuntimeProperties::init("Asseme");
+    RuntimeProperties::init("Asseme2");
 
     let env_loader = EnvServerConfigLoader::new();
 
