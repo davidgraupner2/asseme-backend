@@ -1,5 +1,5 @@
-use crate::RuntimeProperties;
 use axum::Json;
+use runtime_shared::RuntimeProperties;
 
 pub async fn get_info(api_version: &str, id: &str) -> Json<serde_json::Value> {
     let properties = RuntimeProperties::global();

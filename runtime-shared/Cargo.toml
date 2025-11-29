@@ -1,5 +1,5 @@
 [package]
-name = "agent-linux"
+name = "runtime-shared"
 version = "0.1.0"
 authors.workspace = true
 homepage.workspace = true
@@ -10,9 +10,8 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-runtime-shared = { path = "../../runtime-shared" }
-tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }
-tracing="0.1.41"
-tracing-subscriber={version="0.3.20", features=["env-filter","json"]}
+tracing = "0.1.41"
 tracing-appender = "0.2.3"
-ractor="0.15"
+tracing-subscriber = {version="0.3.20", features = ["std", "json","ansi","env-filter","fmt","local-time"]}
+sysinfo = "0.37.2"
+machineid-rs="1.2.4"

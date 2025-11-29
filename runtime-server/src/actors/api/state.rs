@@ -1,7 +1,7 @@
 use crate::actors::api::v1::handlers::agent::types::AgentRegistry;
-use crate::RuntimeProperties;
 use axum::extract::ws::Message;
 use dashmap::DashMap;
+use runtime_shared::RuntimeProperties;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tokio::sync::{broadcast::Sender, Mutex};

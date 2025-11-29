@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{fmt, prelude::*, registry::Registry};
-use tracing_subscriber::{reload, EnvFilter};
 
 pub(crate) mod format;
 pub(crate) mod output;
@@ -165,7 +165,7 @@ fn initialise_logging_both(
 }
 
 /// New wrapper that accepts an explicit output selection.
-pub(crate) fn initialise_logging(
+pub fn initialise_logging(
     log_file_folder: &PathBuf,
     log_file_name: &str,
     log_file_format: &str,

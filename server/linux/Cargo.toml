@@ -1,5 +1,5 @@
 [package]
-name = "linux"
+name = "server-linux"
 version = "0.1.0"
 authors.workspace = true
 homepage.workspace = true
@@ -11,11 +11,11 @@ repository.workspace = true
 
 [dependencies]
 server-config = { path = "../../server-config" }
-server-runtime = { path = "../../server-runtime" }
+runtime-server = { path = "../../runtime-server" }
+runtime-shared = { path = "../../runtime-shared" }
 server-config-loaders = { path = "../../server-config-loaders" }
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }
 tracing="0.1.41"
 tracing-subscriber={version="0.3.20", features=["env-filter","json"]}
 tracing-appender = "0.2.3"
-# sysinfo = "0.37.2"
 ractor="0.15"
