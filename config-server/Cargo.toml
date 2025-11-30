@@ -1,5 +1,5 @@
 [package]
-name = "models"
+name = "config-server"
 version = "0.1.0"
 authors.workspace = true
 homepage.workspace = true
@@ -10,3 +10,7 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1.0"
+tower-http = { version = "0.6", features = ["cors"] }
+axum = { version = "0.8", features = ["http1"] }

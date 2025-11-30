@@ -11,8 +11,8 @@ use crate::actors::{
 };
 use axum::Router;
 use axum_server::tls_rustls::RustlsConfig;
+use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use server_config::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;

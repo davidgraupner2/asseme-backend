@@ -1,37 +1,81 @@
+use config_agent::AgentSettings;
 use ractor::Actor;
+use runtime_agent::{
+    actors::controller::arguments::AgentControllerArguments, AgentRuntimeController,
+};
 use runtime_shared::RuntimeProperties;
+use std::collections::HashMap;
 use tokio::signal;
+
+use config::Config;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialise the rumtime properties we will be leveraging
+    // Initialise the runtime properties we will be leveraging
     RuntimeProperties::init("Linux Agent");
 
-    let env_loader = EnvServerConfigLoader::new();
+    // Add the file names we will need for the agent
+    let runtime_properties = RuntimeProperties::global();
+    runtime_properties.register_file(
+        "config_file",
+        runtime_properties
+            .folders()
+            .home()
+            .join("config")
+            .join("config.toml"),
+    );
 
-    // Load all configs using type inference
-    let api_config = LoadApiConfiguration::load_config(&env_loader);
-    let cors_config = LoadCorsConfiguration::load_config(&env_loader);
-    let logging_config = LoadLoggingConfiguration::load_config(&env_loader);
-    let rate_limit_config = LoadRateLimitingConfiguration::load_config(&env_loader);
+    let settings = AgentSettings::new(
+        runtime_properties
+            .get_file("config_file")
+            .unwrap()
+            .to_string_lossy()
+            .to_string(),
+    )?;
 
-    // Create the arguments we need to pass to the controller runtime
-    let runtime_controller_args = RuntimeControllerArguments {
-        log_format: logging_config.log_format,
-        log_output: logging_config.log_output,
-        api_configuration: api_config,
-        cors_configuration: cors_config,
-        rate_limiting_configuration: rate_limit_config,
+    // // Add the file names we will need for the agent
+    // let runtime_properties = RuntimeProperties::global();
+    // runtime_properties.register_file(
+    //     "config_file",
+    //     runtime_properties
+    //         .folders()
+    //         .home()
+    //         .join("config")
+    //         .join("config.toml"),
+    // );
+
+    // let config_file_name = runtime_properties.get_file("config_file").unwrap();
+
+    // let settings = Config::builder()
+    //     .add_source(config::File::with_name(&format!(
+    //         "{}",
+    //         config_file_name.display()
+    //     )))
+    //     .build()
+    //     .unwrap();
+
+    // println!(
+    //     "{:?}",
+    //     settings
+    //         .try_deserialize::<HashMap<String, String>>()
+    //         .unwrap()
+    // );
+
+    println!("{:?}", settings);
+
+    let agent_runtime_controller_arguments = AgentControllerArguments {
+        api_config: settings.api,
+        log_config: settings.logging,
     };
 
     // Start the runtime controller
     let (_actor, _actor_handle) = Actor::spawn(
-        Some("RuntimeController".to_string()),
-        RuntimeController,
-        runtime_controller_args,
+        Some("AgentRuntimeController".to_string()),
+        AgentRuntimeController,
+        agent_runtime_controller_arguments,
     )
     .await
-    .expect("RuntimeController failed to start");
+    .expect("Agent RuntimeController failed to start");
 
     // Wait here until we receive a CTRL-C Signal break
     signal::ctrl_c().await.expect("Failed to wait");

@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use crate::actors::{
     api::{
         actor::{ApiActor, ApiStartupArguments},
@@ -13,8 +11,8 @@ use crate::actors::{
 use ractor::Actor;
 use ractor::{ActorProcessingErr, ActorRef};
 // use ractor_supervisor::*;
+use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use runtime_shared::{initialise_logging, RuntimeProperties};
-use server_config::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use tracing::{error, event, info, instrument, warn};
 
 #[derive(Debug)]

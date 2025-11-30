@@ -1,5 +1,5 @@
 use axum::http::{HeaderName, HeaderValue, Method};
-use server_config::{CorsConfiguration, CorsMode};
+use config_server::{CorsConfiguration, CorsMode};
 use tower_http::cors::CorsLayer;
 use tracing::warn;
 

@@ -1,8 +1,13 @@
+pub mod files;
 pub mod folders;
 
 use crate::properties::folders::Folders;
 use machineid_rs::{Encryption, HWIDComponent, IdBuilder};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::OnceLock;
+use std::sync::RwLock;
 use sysinfo::System;
 
 // Global var to store runtime properties
@@ -17,6 +22,7 @@ pub struct RuntimeProperties {
     exe_name: Box<str>,
     id: Box<str>,
     folders: Box<Folders>,
+    pub files: Arc<RwLock<BTreeMap<String, PathBuf>>>,
 }
 
 impl RuntimeProperties {
@@ -86,6 +92,7 @@ impl RuntimeProperties {
             exe_name,
             id,
             folders,
+            files: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
@@ -121,6 +128,7 @@ impl RuntimeProperties {
             exe_name,
             id,
             folders,
+            files: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
@@ -145,6 +153,18 @@ impl RuntimeProperties {
     }
     pub fn app_name(&self) -> &str {
         &self.app_name
+    }
+
+    /// Register (insert or replace) a name -> path entry.
+    pub fn register_file(&self, name: impl Into<String>, path: impl Into<PathBuf>) {
+        let mut map = self.files.write().unwrap();
+        map.insert(name.into(), path.into());
+    }
+
+    /// Retrieve a cloned PathBuf for a registered name, if present.
+    pub fn get_file(&self, name: &str) -> Option<PathBuf> {
+        let map = self.files.read().unwrap();
+        map.get(name).cloned()
     }
 }
 

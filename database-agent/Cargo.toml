@@ -1,5 +1,5 @@
 [package]
-name = "server-config-loaders"
+name = "database-agent"
 version = "0.1.0"
 authors.workspace = true
 homepage.workspace = true
@@ -10,5 +10,8 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-dotenvy="0.15"
-config-server = { path = "../config-server" }
+rusqlite = { version = "0.37.0", features = ["bundled", "limits"] }
+deadpool = "0.12.0"
+deadpool-sqlite = "0.12.0"
+tracing = "0.1.41"
+anyhow="1.0"

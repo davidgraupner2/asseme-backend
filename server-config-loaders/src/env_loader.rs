@@ -1,4 +1,4 @@
-use server_config::{
+use config_server::{
     ApiConfiguration, CorsConfiguration, CorsMode, LoadApiConfiguration, LoadCorsConfiguration,
     LoadLoggingConfiguration, LoadRateLimitingConfiguration, LoggingConfiguration,
     RateLimitingConfiguration,

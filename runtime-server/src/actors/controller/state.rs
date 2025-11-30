@@ -1,6 +1,6 @@
 use crate::actors::api::ApiMessage;
+use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use ractor::ActorRef;
-use server_config::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use tracing_appender::non_blocking::WorkerGuard;
 
 #[derive(Debug)]

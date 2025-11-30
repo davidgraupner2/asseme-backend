@@ -10,7 +10,7 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-server-config = { path = "../../server-config" }
+config-server = { path = "../../config-server" }
 runtime-server = { path = "../../runtime-server" }
 runtime-shared = { path = "../../runtime-shared" }
 server-config-loaders = { path = "../../server-config-loaders" }

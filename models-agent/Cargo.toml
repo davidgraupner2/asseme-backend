@@ -1,5 +1,5 @@
 [package]
-name = "server-config-loaders"
+name = "models-agent"
 version = "0.1.0"
 authors.workspace = true
 homepage.workspace = true
@@ -10,5 +10,3 @@ rust-version.workspace = true
 repository.workspace = true
 
 [dependencies]
-dotenvy="0.15"
-config-server = { path = "../config-server" }

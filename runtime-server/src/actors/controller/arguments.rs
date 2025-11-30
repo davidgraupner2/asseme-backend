@@ -1,4 +1,4 @@
-use server_config::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
+use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 
 #[derive(Debug)]
 pub struct ControllerArguments {
