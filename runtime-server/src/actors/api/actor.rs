@@ -9,7 +9,7 @@ use crate::actors::{
     },
     controller::ACTOR_API_SERVER_NAME,
 };
-use axum::Router;
+use axum::{Extension, Router};
 use axum_server::tls_rustls::RustlsConfig;
 use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
@@ -46,12 +46,7 @@ impl ApiActor {
         port: u16,
         rate_limiting: RateLimitingConfiguration,
         api_request_timeout_seconds: u64,
-        agent_ping_interval: u64,
-        agent_ping_timeout: u64,
     ) -> Router {
-        // Create the initial API Version 1 state - as we create more version, there could be more of these
-        let v1_state = V1ApiState::new(agent_ping_interval, agent_ping_timeout);
-
         // Create the CORS layer based on passed in configuration
         let cors_layer = to_cors_layer(cors, port);
 
@@ -97,7 +92,7 @@ impl ApiActor {
             .layer(GovernorLayer::new(rate_limiter_config));
 
         Router::new()
-            .merge(api_router(state.clone().into(), v1_state))
+            .merge(api_router())
             .layer(middleware_stack)
             // Add a timeout layer to timeout requests if they take too long
             .layer(TimeoutLayer::new(Duration::from_secs(
@@ -125,7 +120,12 @@ impl Actor for ApiActor {
         let cert_config = load_certs().await;
 
         //Initialise the shared Axum State
-        let api_state = ApiState::new();
+        let api_state = ApiState::new(
+            args.api_config.server_jwt_secret,
+            args.api_config.agent_jwt_secret,
+            args.api_config.agent_ping_interval,
+            args.api_config.agent_ping_timeout,
+        );
 
         // Start the Web Server
         let listener = match tokio::net::TcpListener::bind(format!(
@@ -149,8 +149,6 @@ impl Actor for ApiActor {
             args.api_config.port.clone(),
             args.rate_limiting,
             args.api_config.request_timeout_secs,
-            args.api_config.agent_ping_interval,
-            args.api_config.agent_ping_timeout,
         );
 
         let server = axum_server::from_tcp_rustls(listener, cert_config)

@@ -81,6 +81,16 @@ impl LoadApiConfiguration for EnvServerConfigLoader {
             .parse()
             .unwrap_or(api_configuration.agent_ping_timeout);
 
+        api_configuration.agent_jwt_secret = env::var("API_AGENT_JWT_SECRET")
+            .unwrap_or(api_configuration.agent_jwt_secret.to_string())
+            .parse()
+            .unwrap_or(api_configuration.agent_jwt_secret);
+
+        api_configuration.server_jwt_secret = env::var("API_SERVER_JWT_SECRET")
+            .unwrap_or(api_configuration.server_jwt_secret.to_string())
+            .parse()
+            .unwrap_or(api_configuration.server_jwt_secret);
+
         api_configuration
     }
 }

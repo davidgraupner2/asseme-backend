@@ -2,10 +2,14 @@ pub(crate) mod protocol;
 pub(crate) mod types;
 
 use crate::actors::api::{
-    state::V1ApiState,
-    v1::handlers::agent::{
-        protocol::{Inbound, Outbound},
-        types::{AgentEntry, AgentInfo, AgentRegistry},
+    state::{ApiState, V1ApiState},
+    v1::{
+        api_response::{ApiError, ApiResponse},
+        handlers::agent::{
+            protocol::{Inbound, Outbound},
+            types::{AgentEntry, AgentInfo, AgentRegistry},
+        },
+        jwt::{generate_jwt, JwtType},
     },
 };
 use axum::{
@@ -14,19 +18,50 @@ use axum::{
         Query, State, WebSocketUpgrade,
     },
     response::IntoResponse,
+    Extension,
 };
 use futures_util::{SinkExt, StreamExt};
+use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot, Mutex};
-use tracing::{info, instrument};
+use tracing::{error, info, instrument};
 use types::WSConnect;
 use uuid::Uuid;
 
-#[instrument(name = "Agent Handler", level = "trace")]
-pub async fn agent_handler(
+#[derive(Serialize)]
+pub struct AgentToken {
+    token: String,
+}
+
+#[instrument(name = "Agent Token Generator", level = "trace")]
+pub async fn get_agent_token_handler(
+    State(state): State<Arc<ApiState>>,
+    Extension(v1_state): Extension<Arc<V1ApiState>>,
+) -> Result<ApiResponse<AgentToken>, ApiError> {
+    // #TODO - need to ensure the tenant is selected from the auth bearer token
+    let tenant = "streamline_partners";
+
+    match generate_jwt(tenant, &state.agent_jwt_secret, JwtType::Agent) {
+        Ok(jwt) => {
+            let token = AgentToken { token: jwt };
+            Ok(ApiResponse::ok(token))
+        }
+        Err(error) => {
+            error!(error=%error,"Failed to generate Agent JWT");
+            Err(ApiError::Internal(format!(
+                "Failed to generate Agent JWT - {}",
+                error.to_string()
+            )))
+        }
+    }
+}
+
+#[instrument(name = "Agent Connection Handler", level = "trace")]
+pub async fn agent_connection_handler(
     ws: WebSocketUpgrade,
     Query(params): Query<WSConnect>,
-    State(v1_state): State<Arc<V1ApiState>>,
+    State(state): State<Arc<ApiState>>,
+    Extension(v1_state): Extension<Arc<V1ApiState>>,
 ) -> impl IntoResponse {
     println!("PARAMS: {:?}", params);
 
@@ -44,7 +79,7 @@ pub async fn agent_handler(
     let token = params.token;
 
     // capture owned values into the on_upgrade closure
-    ws.on_upgrade(move |socket| handle_socket(socket, id, token, groups, v1_state))
+    ws.on_upgrade(move |socket| handle_socket(socket, id, token, groups, state, v1_state))
 }
 
 #[instrument(name = "Hande Agent Socket Connection", level = "trace")]
@@ -53,7 +88,8 @@ async fn handle_socket(
     agent_id: String,
     token: String,
     groups: Vec<String>,
-    state: Arc<V1ApiState>,
+    state: Arc<ApiState>,
+    v1_state: Arc<V1ApiState>,
 ) {
     // split socket into sink and stream
     let (mut sender, mut receiver) = socket.split();
@@ -82,14 +118,16 @@ async fn handle_socket(
         tx: tx.clone(),
     };
 
-    state.agent_registry.insert(agent_id.clone(), entry.clone());
+    v1_state
+        .agent_registry
+        .insert(agent_id.clone(), entry.clone());
     info!(%agent_id, "agent connected (from querystring)");
 
     // spawn heartbeat monitor
     tokio::spawn(start_heartbeat(
         agent_id.clone(),
         entry.clone(),
-        state.agent_registry.clone(),
+        v1_state.agent_registry.clone(),
         state.agent_ping_interval,
         state.agent_ping_timeout,
     ));
@@ -102,7 +140,7 @@ async fn handle_socket(
                     match inbound {
                         Inbound::Pong { nonce: _ } => {
                             // resolve pending pong oneshot if present
-                            if let Some(entry) = state.agent_registry.get(&agent_id) {
+                            if let Some(entry) = v1_state.agent_registry.get(&agent_id) {
                                 let info = &entry.info;
                                 let mut last = info.last_seen.lock().await;
                                 *last = chrono::Utc::now();
@@ -113,7 +151,7 @@ async fn handle_socket(
                         }
                         Inbound::Disconnect { reason } => {
                             info!(agent = %agent_id, ?reason, "agent requested disconnect");
-                            state.agent_registry.remove(&agent_id);
+                            v1_state.agent_registry.remove(&agent_id);
                             let _ = tx.send(
                                 serde_json::to_string(&Outbound::Disconnect { reason }).unwrap(),
                             );
@@ -127,7 +165,7 @@ async fn handle_socket(
             }
             Message::Close(_) => {
                 info!(agent = %agent_id, "socket closed by client");
-                state.agent_registry.remove(&agent_id);
+                v1_state.agent_registry.remove(&agent_id);
                 break;
             }
             _ => {}

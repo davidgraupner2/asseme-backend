@@ -11,7 +11,7 @@ use tokio::signal;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialise the rumtime properties we will be leveraging
-    RuntimeProperties::init("Asseme2");
+    RuntimeProperties::init("Asseme");
 
     let env_loader = EnvServerConfigLoader::new();
 
@@ -20,6 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cors_config = LoadCorsConfiguration::load_config(&env_loader);
     let logging_config = LoadLoggingConfiguration::load_config(&env_loader);
     let rate_limit_config = LoadRateLimitingConfiguration::load_config(&env_loader);
+
+    println!("API: {:#?}", api_config);
 
     // Create the arguments we need to pass to the controller runtime
     let runtime_controller_args = RuntimeControllerArguments {

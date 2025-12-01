@@ -7,6 +7,7 @@ use tracing::{error, event, info, instrument, warn};
 use crate::actors::controller::arguments::AgentControllerArguments;
 use crate::actors::controller::messages::AgentControllerMessage;
 use crate::actors::controller::state::AgentControllerState;
+use crate::actors::controller::DATABASE_NAME;
 use runtime_shared::{initialise_logging, RuntimeProperties};
 
 #[derive(Debug)]
@@ -37,9 +38,6 @@ impl Actor for Controller {
 
         state.tracing_worker_guards = tracing_worker_guards;
 
-        let mut database = Database::new("test.db".to_string());
-        database.initialise().await;
-
         Ok(state)
     }
 
@@ -53,6 +51,18 @@ impl Actor for Controller {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         info!("Controller has started");
+
+        // Generate the agent database file name
+        let supplementary_files_folder =
+            RuntimeProperties::global().folders().supplementary_files();
+        let db_file_name = supplementary_files_folder
+            .join(DATABASE_NAME)
+            .to_string_lossy()
+            .to_string();
+
+        // Initialise the agent database
+        let database = Database::new(db_file_name);
+        let _ = database.initialise().await;
 
         Ok(())
     }
