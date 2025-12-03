@@ -49,6 +49,7 @@ impl Actor for Controller {
             &format!("{}.log", RuntimeProperties::global().app_name()),
             &arguments.log_format,
             &arguments.log_output,
+            None,
         );
 
         state.tracing_worker_guards = tracing_worker_guards;

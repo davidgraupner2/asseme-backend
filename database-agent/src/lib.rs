@@ -1,3 +1,5 @@
+pub mod common;
 pub mod database;
-pub mod table_connection_string;
+pub mod records;
+pub mod tables;
 pub mod traits;

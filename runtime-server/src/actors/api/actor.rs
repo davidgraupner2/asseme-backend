@@ -1,20 +1,15 @@
 use crate::actors::api::{state::ApiActorState, utils::get_request_id_header_name};
 use crate::actors::{
     api::{
-        cors::to_cors_layer,
-        messages::ApiMessage,
-        state::{ApiState, V1ApiState},
-        utils::load_certs,
+        cors::to_cors_layer, messages::ApiMessage, state::ApiState, utils::load_certs,
         v1::routes::api_router,
     },
     controller::ACTOR_API_SERVER_NAME,
 };
-use axum::{Extension, Router};
-use axum_server::tls_rustls::RustlsConfig;
+use axum::Router;
 use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::time::Duration;
 use tower::ServiceBuilder;
 use tower_governor::{

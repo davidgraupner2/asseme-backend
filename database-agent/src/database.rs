@@ -1,5 +1,6 @@
 use super::traits::Table;
-use crate::table_connection_string::ConnectionStringTable;
+use crate::tables::{connection_string::ConnectionStringTable, property::PropertyTable};
+
 use anyhow::{anyhow, Result};
 use deadpool_sqlite::{Config, InteractError, Runtime};
 use tracing::{error, info};
@@ -21,6 +22,7 @@ impl Database {
 
         let mut tables: Vec<Box<dyn Table>> = vec![];
         tables.push(Box::new(ConnectionStringTable::new()));
+        tables.push(Box::new(PropertyTable::new()));
         Self { pool, tables }
     }
 

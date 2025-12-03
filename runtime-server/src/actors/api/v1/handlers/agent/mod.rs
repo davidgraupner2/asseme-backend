@@ -4,12 +4,13 @@ pub(crate) mod types;
 use crate::actors::api::{
     state::{ApiState, V1ApiState},
     v1::{
-        api_response::{ApiError, ApiResponse},
+        errors::ApiError,
         handlers::agent::{
             protocol::{Inbound, Outbound},
             types::{AgentEntry, AgentInfo, AgentRegistry},
         },
         jwt::{generate_jwt, JwtType},
+        responses::ApiResponse,
     },
 };
 use axum::{

@@ -4,15 +4,16 @@ use runtime_agent::{
     actors::controller::arguments::AgentControllerArguments, AgentRuntimeController,
 };
 use runtime_shared::RuntimeProperties;
-use std::collections::HashMap;
 use tokio::signal;
 
-use config::Config;
+const AGENT_NAME: &str = "Linux Agent";
+const AGENT_CONFIG_FOLDER: &str = "config";
+const AGENT_CONFIG_FILE: &str = "agent.toml";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialise the runtime properties we will be leveraging
-    RuntimeProperties::init("Linux Agent");
+    RuntimeProperties::init(AGENT_NAME);
 
     // Add the file names we will need for the agent
     let runtime_properties = RuntimeProperties::global();
@@ -21,8 +22,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         runtime_properties
             .folders()
             .home()
-            .join("config")
-            .join("config.toml"),
+            .join(AGENT_CONFIG_FOLDER)
+            .join(AGENT_CONFIG_FILE),
     );
 
     let settings = AgentSettings::new(
@@ -32,36 +33,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .to_string_lossy()
             .to_string(),
     )?;
-
-    // // Add the file names we will need for the agent
-    // let runtime_properties = RuntimeProperties::global();
-    // runtime_properties.register_file(
-    //     "config_file",
-    //     runtime_properties
-    //         .folders()
-    //         .home()
-    //         .join("config")
-    //         .join("config.toml"),
-    // );
-
-    // let config_file_name = runtime_properties.get_file("config_file").unwrap();
-
-    // let settings = Config::builder()
-    //     .add_source(config::File::with_name(&format!(
-    //         "{}",
-    //         config_file_name.display()
-    //     )))
-    //     .build()
-    //     .unwrap();
-
-    // println!(
-    //     "{:?}",
-    //     settings
-    //         .try_deserialize::<HashMap<String, String>>()
-    //         .unwrap()
-    // );
-
-    println!("{:?}", settings);
 
     let agent_runtime_controller_arguments = AgentControllerArguments {
         api_config: settings.api,

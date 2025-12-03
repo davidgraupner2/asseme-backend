@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::fmt::Debug;
 
 pub trait Table: Send + Sync + Debug {
@@ -10,4 +11,8 @@ impl Clone for Box<dyn Table> {
     fn clone(&self) -> Box<dyn Table> {
         self.clone_box()
     }
+}
+
+pub trait TableRecord {
+    fn create(&self) -> Result<Option<&Self>>;
 }

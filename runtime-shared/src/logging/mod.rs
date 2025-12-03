@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_appender::rolling;
+use tracing_subscriber::layer::Filter;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::{fmt, prelude::*, registry::Registry};
 
@@ -11,9 +12,9 @@ pub(crate) mod format;
 pub(crate) mod output;
 
 /// Initialise logging to console only. .
-fn initialise_logging_console(log_file_format: &str) -> Vec<WorkerGuard> {
+fn initialise_logging_console(log_file_format: &str, filter: EnvFilter) -> Vec<WorkerGuard> {
     let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(filter)
         .with_writer(std::io::stdout);
 
     match log_file_format {
@@ -46,12 +47,13 @@ fn initialise_logging_file(
     log_file_folder: &PathBuf,
     log_file_name: &str,
     log_file_format: &str,
+    filter: EnvFilter,
 ) -> Vec<WorkerGuard> {
     let file_appender = rolling::daily(log_file_folder, log_file_name);
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
     let subscriber = fmt::Subscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(filter)
         .with_writer(non_blocking)
         .with_ansi(false);
 
@@ -86,6 +88,7 @@ fn initialise_logging_both(
     log_file_folder: &PathBuf,
     log_file_name: &str,
     log_file_format: &str,
+    filter: EnvFilter,
 ) -> Vec<WorkerGuard> {
     let _ = LogFileFormat::from_str(log_file_format).unwrap_or(LogFileFormat::Pretty);
 
@@ -98,13 +101,13 @@ fn initialise_logging_both(
                 .json()
                 .with_writer(non_blocking)
                 .with_ansi(false)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter.clone());
 
             let console_layer = fmt::layer()
                 .json()
                 .with_writer(std::io::stdout)
                 .with_ansi(true)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter);
 
             let subscriber = Registry::default().with(file_layer).with(console_layer);
             tracing::subscriber::set_global_default(subscriber)
@@ -115,13 +118,13 @@ fn initialise_logging_both(
                 .pretty()
                 .with_writer(non_blocking)
                 .with_ansi(false)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter.clone());
 
             let console_layer = fmt::layer()
                 .pretty()
                 .with_writer(std::io::stdout)
                 .with_ansi(true)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter);
 
             let subscriber = Registry::default().with(file_layer).with(console_layer);
             tracing::subscriber::set_global_default(subscriber)
@@ -132,13 +135,13 @@ fn initialise_logging_both(
                 .compact()
                 .with_writer(non_blocking)
                 .with_ansi(false)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter.clone());
 
             let console_layer = fmt::layer()
                 .compact()
                 .with_writer(std::io::stdout)
                 .with_ansi(true)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter);
 
             let subscriber = Registry::default().with(file_layer).with(console_layer);
             tracing::subscriber::set_global_default(subscriber)
@@ -148,12 +151,12 @@ fn initialise_logging_both(
             let file_layer = fmt::layer()
                 .with_writer(non_blocking)
                 .with_ansi(false)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter.clone());
 
             let console_layer = fmt::layer()
                 .with_writer(std::io::stdout)
                 .with_ansi(true)
-                .with_filter(EnvFilter::from_default_env());
+                .with_filter(filter);
 
             let subscriber = Registry::default().with(file_layer).with(console_layer);
             tracing::subscriber::set_global_default(subscriber)
@@ -170,15 +173,23 @@ pub fn initialise_logging(
     log_file_name: &str,
     log_file_format: &str,
     output: &str,
+    override_filter: Option<&str>,
 ) -> Vec<WorkerGuard> {
+    // If a filter was passed in, use that - otherwise use the env filter
+    let filter = if let Some(level) = override_filter {
+        EnvFilter::try_new(level).unwrap_or_else(|_| EnvFilter::new("info"))
+    } else {
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
+    };
+
     match LogOutput::from_str(output) {
-        Ok(LogOutput::Console) => initialise_logging_console(log_file_format),
+        Ok(LogOutput::Console) => initialise_logging_console(log_file_format, filter),
         Ok(LogOutput::File) => {
-            initialise_logging_file(log_file_folder, log_file_name, log_file_format)
+            initialise_logging_file(log_file_folder, log_file_name, log_file_format, filter)
         }
         Ok(LogOutput::Both) => {
-            initialise_logging_both(log_file_folder, log_file_name, log_file_format)
+            initialise_logging_both(log_file_folder, log_file_name, log_file_format, filter)
         }
-        _ => initialise_logging_file(log_file_folder, log_file_name, log_file_format),
+        _ => initialise_logging_file(log_file_folder, log_file_name, log_file_format, filter),
     }
 }

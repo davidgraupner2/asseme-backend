@@ -1,7 +1,8 @@
-use crate::actors::api::v1::responses::ApiResponse;
 use axum::response::IntoResponse;
 use runtime_shared::RuntimeProperties;
 use serde::Serialize;
+
+use crate::actors::api::routes::v1::responses::ApiResponse;
 
 #[derive(Serialize)]
 struct V1Info {
@@ -11,7 +12,7 @@ struct V1Info {
     status: String,
 }
 
-pub async fn get_info(api_version: String, id: String) -> impl IntoResponse {
+pub async fn v1_get_info(api_version: String, id: String) -> impl IntoResponse {
     let properties = RuntimeProperties::global();
 
     let version = properties.version().to_string();

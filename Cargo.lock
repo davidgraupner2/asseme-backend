@@ -632,6 +632,9 @@ dependencies = [
  "deadpool",
  "deadpool-sqlite",
  "rusqlite",
+ "serde",
+ "serde_derive",
+ "serde_json",
  "tracing",
 ]
 
@@ -1545,6 +1548,11 @@ dependencies = [
 [[package]]
 name = "models-agent"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
 
 [[package]]
 name = "models-server"
@@ -2173,6 +2181,8 @@ dependencies = [
 name = "runtime-agent"
 version = "0.1.0"
 dependencies = [
+ "axum",
+ "axum-server",
  "config-agent",
  "database-agent",
  "once_cell",
@@ -2180,6 +2190,9 @@ dependencies = [
  "runtime-shared",
  "serde",
  "serde_derive",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",

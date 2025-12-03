@@ -21,8 +21,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let logging_config = LoadLoggingConfiguration::load_config(&env_loader);
     let rate_limit_config = LoadRateLimitingConfiguration::load_config(&env_loader);
 
-    println!("API: {:#?}", api_config);
-
     // Create the arguments we need to pass to the controller runtime
     let runtime_controller_args = RuntimeControllerArguments {
         log_format: logging_config.log_format,

@@ -1,4 +1,4 @@
-use super::traits::Table;
+use crate::traits::Table;
 
 #[derive(Debug)]
 pub struct ConnectionStringTable;

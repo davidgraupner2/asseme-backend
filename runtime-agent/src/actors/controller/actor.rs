@@ -1,13 +1,15 @@
-use config_agent::AgentSettings;
 use database_agent::database::Database;
 use ractor::Actor;
 use ractor::{ActorProcessingErr, ActorRef};
 use tracing::{error, event, info, instrument, warn};
 
+use crate::actors::api::actor::{ApiActor, ApiStartupArguments};
+use crate::actors::api::messages::ApiMessage;
 use crate::actors::controller::arguments::AgentControllerArguments;
 use crate::actors::controller::messages::AgentControllerMessage;
 use crate::actors::controller::state::AgentControllerState;
-use crate::actors::controller::DATABASE_NAME;
+use crate::actors::{ACTOR_AGENT_API_NAME, DATABASE_NAME};
+use config_agent::{api::ApiConfiguration, logging::LoggingConfiguration};
 use runtime_shared::{initialise_logging, RuntimeProperties};
 
 #[derive(Debug)]
@@ -26,7 +28,8 @@ impl Actor for Controller {
         arguments: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         // Initialise our state
-        let mut state = AgentControllerState::new();
+        let mut state =
+            AgentControllerState::new(arguments.api_config, arguments.log_config.clone());
 
         // Setup Logging
         let tracing_worker_guards = initialise_logging(
@@ -34,6 +37,7 @@ impl Actor for Controller {
             &format!("{}.log", RuntimeProperties::global().app_name()),
             &arguments.log_config.format,
             "file",
+            Some(&state.log_config.level),
         );
 
         state.tracing_worker_guards = tracing_worker_guards;
@@ -41,16 +45,13 @@ impl Actor for Controller {
         Ok(state)
     }
 
-    // TODO Documentation
-    // Invoked after an actor has started.
-    // Any post initialization can be performed here, such as writing to a log file, emitting metrics.
-    #[instrument(name = "Controller_Post_Start", level = "trace")]
+    #[instrument(name = "Agent Controller Post Start", level = "trace")]
     async fn post_start(
         &self,
         myself: ActorRef<Self::Msg>,
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
-        info!("Controller has started");
+        info!("Agent Controller has started");
 
         // Generate the agent database file name
         let supplementary_files_folder =
@@ -62,7 +63,18 @@ impl Actor for Controller {
 
         // Initialise the agent database
         let database = Database::new(db_file_name);
-        let _ = database.initialise().await;
+        match database.initialise().await {
+            Ok(_) => {
+                info!("Database initialised successfully")
+            }
+            Err(e) => {
+                error!("Failed to initialise database: {:?}", e);
+            }
+        }
+
+        // Start the API Server as a linked actor i.e. Controller is the supervisor
+        state.spawned_actors.api_server =
+            start_agent_api_server(myself, state.api_config.clone()).await;
 
         Ok(())
     }
@@ -75,5 +87,28 @@ impl Actor for Controller {
         state: &mut Self::State,
     ) -> Result<(), ActorProcessingErr> {
         Ok(())
+    }
+}
+
+#[instrument(name = "Agent Controller - Start Api Server", level = "trace")]
+async fn start_agent_api_server(
+    controller: ActorRef<AgentControllerMessage>,
+    api_config: ApiConfiguration,
+) -> Option<ActorRef<ApiMessage>> {
+    // Start the API Server as a linked actor i.e. Controller is the supervisor
+    match controller
+        .spawn_linked(
+            Some(ACTOR_AGENT_API_NAME.to_string()),
+            ApiActor {},
+            ApiStartupArguments {},
+        )
+        .await
+    {
+        Ok(result) => Some(result.0),
+
+        Err(error) => {
+            error!(errorMsg = %error, "Error spawning {}", ACTOR_AGENT_API_NAME);
+            None
+        }
     }
 }
