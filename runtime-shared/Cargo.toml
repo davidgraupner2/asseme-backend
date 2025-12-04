@@ -15,3 +15,11 @@ tracing-appender = "0.2.3"
 tracing-subscriber = {version="0.3.20", features = ["std", "json","ansi","env-filter","fmt","local-time"]}
 sysinfo = "0.37.2"
 machineid-rs="1.2.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1.0"
+serde_json="1.0"
+axum = { version = "0.8", features = ["macros","tokio"] }
+axum-server= {version="0.7", features = ["tls-rustls"]}
+thiserror="2.0"
+tokio = "1.0"
+# tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }

@@ -58,10 +58,14 @@ impl V1ApiState {
 #[derive(Debug)]
 pub struct ApiActorState {
     pub shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    pub server_shutdown_handle: Option<axum_server::Handle>,
 }
 
 impl ApiActorState {
     pub fn new() -> Self {
-        Self { shutdown_tx: None }
+        Self {
+            shutdown_tx: None,
+            server_shutdown_handle: None,
+        }
     }
 }

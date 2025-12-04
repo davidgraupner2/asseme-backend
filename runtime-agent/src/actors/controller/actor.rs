@@ -8,7 +8,7 @@ use crate::actors::api::messages::ApiMessage;
 use crate::actors::controller::arguments::AgentControllerArguments;
 use crate::actors::controller::messages::AgentControllerMessage;
 use crate::actors::controller::state::AgentControllerState;
-use crate::actors::{ACTOR_AGENT_API_NAME, DATABASE_NAME};
+use crate::actors::{api, ACTOR_AGENT_API_NAME, DATABASE_NAME};
 use config_agent::{api::ApiConfiguration, logging::LoggingConfiguration};
 use runtime_shared::{initialise_logging, RuntimeProperties};
 
@@ -100,7 +100,9 @@ async fn start_agent_api_server(
         .spawn_linked(
             Some(ACTOR_AGENT_API_NAME.to_string()),
             ApiActor {},
-            ApiStartupArguments {},
+            ApiStartupArguments {
+                port: api_config.port,
+            },
         )
         .await
     {

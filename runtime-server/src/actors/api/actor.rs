@@ -1,15 +1,16 @@
 use crate::actors::api::{state::ApiActorState, utils::get_request_id_header_name};
 use crate::actors::{
-    api::{
-        cors::to_cors_layer, messages::ApiMessage, state::ApiState, utils::load_certs,
-        v1::routes::api_router,
-    },
+    api::{cors::to_cors_layer, messages::ApiMessage, state::ApiState, v1::routes::api_router},
     controller::ACTOR_API_SERVER_NAME,
 };
 use axum::Router;
 use config_server::{ApiConfiguration, CorsConfiguration, RateLimitingConfiguration};
 use ractor::{Actor, ActorProcessingErr, ActorRef};
+use runtime_shared::api_server::APIServer;
+use runtime_shared::RuntimeProperties;
 use std::net::SocketAddr;
+use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 use std::time::Duration;
 use tower::ServiceBuilder;
 use tower_governor::{
@@ -108,11 +109,7 @@ impl Actor for ApiActor {
         myself: ActorRef<Self::Msg>,
         args: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
-        let state = ApiActorState::new();
-
-        // Load the TSL certificates
-        // - Panics if certificates cannot be found
-        let cert_config = load_certs().await;
+        let mut state = ApiActorState::new();
 
         //Initialise the shared Axum State
         let api_state = ApiState::new(
@@ -121,20 +118,6 @@ impl Actor for ApiActor {
             args.api_config.agent_ping_interval,
             args.api_config.agent_ping_timeout,
         );
-
-        // Start the Web Server
-        let listener = match tokio::net::TcpListener::bind(format!(
-            "0.0.0.0:{}",
-            args.api_config.port.clone()
-        ))
-        .await
-        {
-            Ok(listener) => listener.into_std().unwrap(),
-            Err(error) => {
-                error!(error=%error,actor=ACTOR_API_SERVER_NAME,"Failed to start");
-                panic!("{}", error)
-            }
-        };
 
         // Create the API Router
         // - Ensuring we pass in the required shared state and cors configuration
@@ -146,16 +129,33 @@ impl Actor for ApiActor {
             args.api_config.request_timeout_secs,
         );
 
-        let server = axum_server::from_tcp_rustls(listener, cert_config)
-            .serve(app.into_make_service_with_connect_info::<SocketAddr>());
+        let runtime_properties = RuntimeProperties::global();
 
-        tokio::spawn(async move {
-            if let Err(e) = server.await {
-                eprintln!("Server error: {}", e);
+        let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), args.api_config.port);
+        match APIServer::new(socket, app)
+            .add_certs(
+                PathBuf::new()
+                    .join(runtime_properties.folders().home())
+                    .join(".certs")
+                    .join("cert.pem"),
+                PathBuf::new()
+                    .join(runtime_properties.folders().home())
+                    .join(".certs")
+                    .join("key.pem"),
+            )
+            .await?
+            .start()
+            .await
+        {
+            Ok(server_shutdown_handle) => {
+                state.server_shutdown_handle = Some(server_shutdown_handle);
+
+                Ok(state)
             }
-        });
+            Err(error) => Err(error.into()),
+        }
 
-        Ok(state)
+        // Ok(state)
     }
 
     #[instrument(name = "API Server - Post Start", level = "trace")]
