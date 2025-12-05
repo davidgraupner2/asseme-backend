@@ -1,4 +1,5 @@
-use database_agent::database::Database;
+use database_agent::establish_db_connection;
+// use database_agent::database::Database;
 use ractor::Actor;
 use ractor::{ActorProcessingErr, ActorRef};
 use tracing::{error, event, info, instrument, warn};
@@ -11,6 +12,7 @@ use crate::actors::controller::state::AgentControllerState;
 use crate::actors::{api, ACTOR_AGENT_API_NAME, DATABASE_NAME};
 use config_agent::{api::ApiConfiguration, logging::LoggingConfiguration};
 use runtime_shared::{initialise_logging, RuntimeProperties};
+use std::env::{self, set_var};
 
 #[derive(Debug)]
 pub struct Controller;
@@ -61,16 +63,21 @@ impl Actor for Controller {
             .to_string_lossy()
             .to_string();
 
+        // Establish the DB connection
+        let db = establish_db_connection(db_file_name.clone());
+
+        // Run the database migrations to build the database
+
         // Initialise the agent database
-        let database = Database::new(db_file_name);
-        match database.initialise().await {
-            Ok(_) => {
-                info!("Database initialised successfully")
-            }
-            Err(e) => {
-                error!("Failed to initialise database: {:?}", e);
-            }
-        }
+        // let database = Database::new(db_file_name);
+        // match database.initialise().await {
+        //     Ok(_) => {
+        //         info!("Database initialised successfully")
+        //     }
+        //     Err(e) => {
+        //         error!("Failed to initialise database: {:?}", e);
+        //     }
+        // }
 
         // Start the API Server as a linked actor i.e. Controller is the supervisor
         state.spawned_actors.api_server =
