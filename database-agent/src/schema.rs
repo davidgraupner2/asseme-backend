@@ -4,6 +4,7 @@ diesel::table! {
         value -> Text,
         description -> Nullable<Text>,
         source -> Text,
+        status -> Text,
         created_at -> Text,
         updated_at -> Text,
     }

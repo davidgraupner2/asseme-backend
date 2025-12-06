@@ -25,3 +25,4 @@ axum = { version = "0.8", features = ["macros","tokio"] }
 thiserror="2.0"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }
 axum-server="0.7"
+diesel = { version = "2.3.4", features = ["sqlite", "returning_clauses_for_sqlite_3_35","r2d2"] }

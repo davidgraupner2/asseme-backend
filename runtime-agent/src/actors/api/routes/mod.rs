@@ -4,7 +4,7 @@ use axum::{Extension, Router};
 use std::sync::Arc;
 
 use crate::actors::api::{
-    routes::v1::routes::info::v1_info_router,
+    routes::v1::routes::{connection_strings::v1_connection_strings_router, info::v1_info_router},
     state::{ApiState, V1ApiState},
 };
 
@@ -21,5 +21,6 @@ fn v1_router() -> Router<Arc<ApiState>> {
 
     Router::new()
         .merge(v1_info_router(api_version, api_id))
+        .merge(v1_connection_strings_router())
         .layer(Extension(v1_state))
 }

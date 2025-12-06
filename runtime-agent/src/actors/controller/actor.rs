@@ -1,18 +1,16 @@
-use database_agent::establish_db_connection;
-// use database_agent::database::Database;
+use database_agent::{ensure_database_schema, get_db_connection_pool, SqlitePool};
 use ractor::Actor;
 use ractor::{ActorProcessingErr, ActorRef};
-use tracing::{error, event, info, instrument, warn};
+use tracing::{error, info, instrument};
 
 use crate::actors::api::actor::{ApiActor, ApiStartupArguments};
 use crate::actors::api::messages::ApiMessage;
 use crate::actors::controller::arguments::AgentControllerArguments;
 use crate::actors::controller::messages::AgentControllerMessage;
 use crate::actors::controller::state::AgentControllerState;
-use crate::actors::{api, ACTOR_AGENT_API_NAME, DATABASE_NAME};
-use config_agent::{api::ApiConfiguration, logging::LoggingConfiguration};
+use crate::actors::{ACTOR_AGENT_API_NAME, DATABASE_NAME};
+use config_agent::api::ApiConfiguration;
 use runtime_shared::{initialise_logging, RuntimeProperties};
-use std::env::{self, set_var};
 
 #[derive(Debug)]
 pub struct Controller;
@@ -63,25 +61,15 @@ impl Actor for Controller {
             .to_string_lossy()
             .to_string();
 
-        // Establish the DB connection
-        let db = establish_db_connection(db_file_name.clone());
+        // Ensure database migrations are run to create and update the database schema (if needed)
+        let _ = ensure_database_schema(db_file_name.clone());
 
-        // Run the database migrations to build the database
-
-        // Initialise the agent database
-        // let database = Database::new(db_file_name);
-        // match database.initialise().await {
-        //     Ok(_) => {
-        //         info!("Database initialised successfully")
-        //     }
-        //     Err(e) => {
-        //         error!("Failed to initialise database: {:?}", e);
-        //     }
-        // }
+        // Create the database pool to use for the api
+        let db_pool = get_db_connection_pool(db_file_name)?;
 
         // Start the API Server as a linked actor i.e. Controller is the supervisor
         state.spawned_actors.api_server =
-            start_agent_api_server(myself, state.api_config.clone()).await;
+            start_agent_api_server(myself, state.api_config.clone(), db_pool).await;
 
         Ok(())
     }
@@ -101,6 +89,7 @@ impl Actor for Controller {
 async fn start_agent_api_server(
     controller: ActorRef<AgentControllerMessage>,
     api_config: ApiConfiguration,
+    db_pool: SqlitePool,
 ) -> Option<ActorRef<ApiMessage>> {
     // Start the API Server as a linked actor i.e. Controller is the supervisor
     match controller
@@ -109,6 +98,7 @@ async fn start_agent_api_server(
             ApiActor {},
             ApiStartupArguments {
                 port: api_config.port,
+                db_pool,
             },
         )
         .await

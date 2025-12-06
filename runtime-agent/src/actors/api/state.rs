@@ -1,15 +1,18 @@
+use database_agent::SqlitePool;
 use runtime_shared::RuntimeProperties;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ApiState {
     pub id: String,
+    pub db_pool: SqlitePool,
 }
 
 impl ApiState {
-    pub fn new() -> Self {
+    pub fn new(db_pool: SqlitePool) -> Self {
         let runtime_properties = RuntimeProperties::global();
         Self {
             id: format!("agent:{}", runtime_properties.id()),
+            db_pool,
         }
     }
 }

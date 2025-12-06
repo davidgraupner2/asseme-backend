@@ -1,9 +1,8 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-
-use axum::{routing::get, Router};
+use axum::Router;
+use database_agent::SqlitePool;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
-use tokio::sync::AcquireError;
-use tracing::{error, info, instrument};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use tracing::{info, instrument};
 
 use crate::actors::{
     api::{
@@ -18,6 +17,7 @@ use runtime_shared::api_server::APIServer;
 #[derive(Debug)]
 pub struct ApiStartupArguments {
     pub port: u16,
+    pub db_pool: SqlitePool,
 }
 
 #[derive(Debug)]
@@ -34,45 +34,6 @@ impl Actor for ApiActor {
     type Msg = ApiMessage;
     type Arguments = ApiStartupArguments;
 
-    // #[instrument(name = "Agent API - Pre Start", level = "trace")]
-    // async fn pre_start(
-    //     &self,
-    //     myself: ActorRef<Self::Msg>,
-    //     args: Self::Arguments,
-    // ) -> Result<Self::State, ActorProcessingErr> {
-    //     let mut state = ApiActorState::new();
-
-    //     //Initialise the shared Axum State
-    //     let api_state = ApiState::new();
-
-    //     // Create a server shutdown handle
-    //     let handle = axum_server::Handle::new();
-
-    //     let app = Self::router(api_state.clone());
-
-    //     let server_handle_clone = handle.clone();
-    //     tokio::spawn(async move {
-    //         let addr = SocketAddr::from(([127, 0, 0, 1], 8014));
-    //         match axum_server::bind(addr)
-    //             .handle(server_handle_clone)
-    //             .serve(app.into_make_service_with_connect_info::<SocketAddr>())
-    //             .await
-    //         {
-    //             Ok(_) => {
-    //                 info!("{} stopped gracefully", ACTOR_AGENT_API_NAME);
-    //             }
-    //             Err(error) => {
-    //                 error!(errorMsg = %error, "Error starting {}", ACTOR_AGENT_API_NAME);
-    //             }
-    //         }
-    //     });
-
-    //     // Store the server shutdown handle
-    //     state.server_handle = Some(handle);
-
-    //     Ok(state)
-    // }
-
     #[instrument(name = "Agent API - Pre Start", level = "trace")]
     async fn pre_start(
         &self,
@@ -82,7 +43,7 @@ impl Actor for ApiActor {
         let mut state = ApiActorState::new();
 
         //Initialise the shared Axum State
-        let api_state = ApiState::new();
+        let api_state = ApiState::new(args.db_pool);
 
         let app = Self::router(api_state.clone());
 
