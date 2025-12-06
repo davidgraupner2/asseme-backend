@@ -2,7 +2,7 @@ use crate::schema::connection_strings;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Serialize)]
+#[derive(Queryable, Selectable, Serialize, Debug)]
 #[diesel(table_name = crate::schema::connection_strings)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct ConnectionStrings {
