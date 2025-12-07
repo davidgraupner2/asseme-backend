@@ -54,9 +54,12 @@ where
     T: Serialize,
 {
     fn into_response(self) -> axum::response::Response {
-        if self.ok {
+        if self.ok && self.data.is_some() {
             // 200 OK with JSON body
             (StatusCode::OK, Json(self)).into_response()
+        } else if self.ok && self.data.is_none() {
+            // 200 OK with JSON body
+            (StatusCode::NOT_FOUND, Json(self)).into_response()
         } else {
             // error envelope -> 400 Bad Request; change mapping as desired
             (StatusCode::BAD_REQUEST, Json(self)).into_response()

@@ -1,7 +1,5 @@
 use crate::actors::api::{routes::v1::responses::ApiResponse, state::ApiState};
-use crate::actors::{
-    API_SOURCE_NAME, CONNECTION_STRING_ACTIVE_STATUS, CONNECTION_STRING_PENDING_STATUS,
-};
+use crate::actors::{CONNECTION_STRING_ACTIVE_STATUS, CONNECTION_STRING_PENDING_STATUS};
 use axum::{
     extract::{Json, State},
     response::IntoResponse,
@@ -12,7 +10,7 @@ use database_agent::schema::connection_strings::status;
 use diesel::{associations::HasTable, prelude::*};
 use std::sync::Arc;
 
-async fn get_connection_strings_internal(
+fn get_connection_strings_internal(
     state: Arc<ApiState>,
     status_filter: Option<&str>,
 ) -> impl IntoResponse {
@@ -27,25 +25,30 @@ async fn get_connection_strings_internal(
         .select(ConnectionStrings::as_select())
         .load(&mut db_conn)
     {
-        Ok(list) => ApiResponse::ok(list),
+        Ok(list) => {
+            if list.len() < 1 {
+                return ApiResponse::ok_empty();
+            }
+            ApiResponse::ok(list)
+        }
         Err(error) => ApiResponse::err(error.to_string()),
     }
 }
 
 pub async fn v1_get_connection_strings(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
-    get_connection_strings_internal(state, None).await
+    get_connection_strings_internal(state, None);
 }
 
 pub async fn v1_get_connection_strings_active(
     State(state): State<Arc<ApiState>>,
 ) -> impl IntoResponse {
-    get_connection_strings_internal(state, Some(CONNECTION_STRING_ACTIVE_STATUS)).await
+    get_connection_strings_internal(state, Some(CONNECTION_STRING_ACTIVE_STATUS))
 }
 
 pub async fn v1_get_connection_strings_pending(
     State(state): State<Arc<ApiState>>,
 ) -> impl IntoResponse {
-    get_connection_strings_internal(state, Some(CONNECTION_STRING_PENDING_STATUS)).await
+    get_connection_strings_internal(state, Some(CONNECTION_STRING_PENDING_STATUS))
 }
 
 pub async fn v1_post_connection_strings(
@@ -55,9 +58,7 @@ pub async fn v1_post_connection_strings(
     let mut db_conn = state.db_pool.get().unwrap();
 
     // Ensure the source is set to API
-    let mut new_connection_string = payload;
-    new_connection_string.source = Some(String::from(API_SOURCE_NAME));
-    // new_connection_string.status = Some(String::from(CONNECTION_STRING_PENDING_STATUS));
+    let new_connection_string = payload;
 
     match diesel::insert_into(connection_strings::table())
         .values(&new_connection_string)

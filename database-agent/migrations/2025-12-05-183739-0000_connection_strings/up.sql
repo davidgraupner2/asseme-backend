@@ -37,3 +37,6 @@ BEGIN
         json_object('id', NEW.id, 'value', NEW.value, 'status', NEW.status, 'source', NEW.source)
     );
 END;
+
+-- Unique Index to ensure no duplicates
+CREATE UNIQUE INDEX idx_connection_strings ON connection_strings(value);
