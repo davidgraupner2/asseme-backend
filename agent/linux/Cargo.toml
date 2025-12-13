@@ -12,7 +12,6 @@ repository.workspace = true
 [dependencies]
 runtime-shared = { path = "../../runtime-shared" }
 runtime-agent = { path = "../../runtime-agent" }
-config-agent = { path = "../../config-agent" }
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "signal"] }
 tracing="0.1.41"
 tracing-subscriber={version="0.3.20", features=["env-filter","json"]}

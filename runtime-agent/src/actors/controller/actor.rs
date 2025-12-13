@@ -1,4 +1,5 @@
-use database_agent::{ensure_database_schema, get_db_connection_pool, SqlitePool};
+use database_agent::models::properties::PropertyValue;
+use database_agent::{get_db_connection_pool, SqlitePool};
 use ractor::Actor;
 use ractor::{ActorProcessingErr, ActorRef};
 use tracing::{error, info, instrument};
@@ -8,8 +9,11 @@ use crate::actors::api::messages::ApiMessage;
 use crate::actors::controller::arguments::AgentControllerArguments;
 use crate::actors::controller::messages::AgentControllerMessage;
 use crate::actors::controller::state::AgentControllerState;
-use crate::actors::{ACTOR_AGENT_API_NAME, DATABASE_NAME};
-use config_agent::api::ApiConfiguration;
+
+use crate::{
+    ACTOR_AGENT_API_NAME, DATABASE_NAME, DEFAULT_PROPERTY_LOGGING_FORMAT,
+    DEFAULT_PROPERTY_LOGGING_LEVEL, PROPERTY_LOGGING_FORMAT, PROPERTY_LOGGING_LEVEL,
+};
 use runtime_shared::{initialise_logging, RuntimeProperties};
 
 #[derive(Debug)]
@@ -28,16 +32,44 @@ impl Actor for Controller {
         arguments: Self::Arguments,
     ) -> Result<Self::State, ActorProcessingErr> {
         // Initialise our state
-        let mut state =
-            AgentControllerState::new(arguments.api_config, arguments.log_config.clone());
+        let mut state = AgentControllerState::new();
+
+        // Get access to our database pool
+        if let Ok(db_pool) = get_db_connection_pool(
+            RuntimeProperties::global().folders().supplementary_files(),
+            DATABASE_NAME,
+        ) {
+            state.db_pool = Some(db_pool);
+        } else {
+            panic!(
+                "Database {} does not exist or could not be created!!!",
+                DATABASE_NAME
+            );
+        }
+
+        let rp = RuntimeProperties::global();
+        println!("Properties: {:#?}", rp);
+
+        // Load our logging parameters or defaults
+        let logging_format = PropertyValue::get_string_or(
+            state.db_pool.clone().unwrap().get().unwrap(),
+            PROPERTY_LOGGING_FORMAT,
+            DEFAULT_PROPERTY_LOGGING_FORMAT.to_string(),
+        );
+
+        let logging_level = PropertyValue::get_string_or(
+            state.db_pool.clone().unwrap().get().unwrap(),
+            PROPERTY_LOGGING_LEVEL,
+            DEFAULT_PROPERTY_LOGGING_LEVEL.to_string(),
+        );
 
         // Setup Logging
         let tracing_worker_guards = initialise_logging(
             RuntimeProperties::global().folders().logs(),
             &format!("{}.log", RuntimeProperties::global().app_name()),
-            &arguments.log_config.format,
+            &logging_format,
             "file",
-            Some(&state.log_config.level),
+            Some(&logging_level),
         );
 
         state.tracing_worker_guards = tracing_worker_guards;
@@ -53,23 +85,9 @@ impl Actor for Controller {
     ) -> Result<(), ActorProcessingErr> {
         info!("Agent Controller has started");
 
-        // Generate the agent database file name
-        let supplementary_files_folder =
-            RuntimeProperties::global().folders().supplementary_files();
-        let db_file_name = supplementary_files_folder
-            .join(DATABASE_NAME)
-            .to_string_lossy()
-            .to_string();
-
-        // Ensure database migrations are run to create and update the database schema (if needed)
-        let _ = ensure_database_schema(db_file_name.clone());
-
-        // Create the database pool to use for the api
-        let db_pool = get_db_connection_pool(db_file_name)?;
-
         // Start the API Server as a linked actor i.e. Controller is the supervisor
         state.spawned_actors.api_server =
-            start_agent_api_server(myself, state.api_config.clone(), db_pool).await;
+            start_agent_api_server(myself, state.db_pool.clone().unwrap()).await;
 
         Ok(())
     }
@@ -88,7 +106,6 @@ impl Actor for Controller {
 #[instrument(name = "Agent Controller - Start Api Server", level = "trace")]
 async fn start_agent_api_server(
     controller: ActorRef<AgentControllerMessage>,
-    api_config: ApiConfiguration,
     db_pool: SqlitePool,
 ) -> Option<ActorRef<ApiMessage>> {
     // Start the API Server as a linked actor i.e. Controller is the supervisor
@@ -96,10 +113,7 @@ async fn start_agent_api_server(
         .spawn_linked(
             Some(ACTOR_AGENT_API_NAME.to_string()),
             ApiActor {},
-            ApiStartupArguments {
-                port: api_config.port,
-                db_pool,
-            },
+            ApiStartupArguments { db_pool },
         )
         .await
     {

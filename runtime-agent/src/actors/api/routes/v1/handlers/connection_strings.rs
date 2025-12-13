@@ -1,5 +1,7 @@
-use crate::actors::api::{routes::v1::responses::ApiResponse, state::ApiState};
-use crate::actors::{CONNECTION_STRING_ACTIVE_STATUS, CONNECTION_STRING_PENDING_STATUS};
+use crate::{
+    actors::api::{routes::v1::responses::ApiResponse, state::ApiState},
+    CONNECTION_STRING_ACTIVE_STATUS, CONNECTION_STRING_PENDING_STATUS,
+};
 use axum::{
     extract::{Json, State},
     response::IntoResponse,

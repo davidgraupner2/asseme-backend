@@ -37,6 +37,22 @@ diesel::table! {
 }
 
 diesel::table! {
+    properties (id) {
+        id -> Integer,
+        key -> Text,
+        #[sql_name = "type"]
+        type_ -> Text,
+        description -> Nullable<Text>,
+        value_int -> Nullable<Integer>,
+        value_string -> Nullable<Text>,
+        value_bool -> Nullable<Integer>,
+        value_json -> Nullable<Text>,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     tags (id) {
         id -> Integer,
         name -> Text,
@@ -44,3 +60,11 @@ diesel::table! {
         updated_at -> Text,
     }
 }
+
+diesel::allow_tables_to_appear_in_same_query!(
+    connection_strings,
+    events,
+    function_hashes,
+    properties,
+    tags,
+);

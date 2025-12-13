@@ -1,6 +1,8 @@
 pub mod models;
 pub mod schema;
 
+use std::path::PathBuf;
+
 use anyhow::{anyhow, Error};
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
@@ -15,12 +17,14 @@ pub type SqlitePool = Pool<ConnectionManager<SqliteConnection>>;
 // Embed migrations from the default "migrations" directory
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-pub fn get_db_connection_pool(db_name: String) -> Result<SqlitePool, Error> {
-    let manager = ConnectionManager::<SqliteConnection>::new(db_name.clone());
+pub fn get_db_connection_pool(folder_name: &PathBuf, db_name: &str) -> Result<SqlitePool, Error> {
+    let db_file_name = folder_name.join(db_name).to_string_lossy().to_string();
+
+    let manager = ConnectionManager::<SqliteConnection>::new(db_file_name.clone());
 
     Ok(Pool::builder()
         .max_size(10)
-        .test_on_check_out(true) // Example: Set maximum pool size
+        .test_on_check_out(true)
         .build(manager)?)
 }
 

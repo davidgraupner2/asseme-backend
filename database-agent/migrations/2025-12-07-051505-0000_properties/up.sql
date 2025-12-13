@@ -2,6 +2,7 @@ CREATE TABLE properties (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     key VARCHAR NOT NULL UNIQUE,
     type VARCHAR NOT NULL CHECK(type IN ('int', 'string', 'bool', 'json')),
+    description VARCHAR,
     value_int INTEGER,
     value_string TEXT,
     value_bool INTEGER,  -- SQLite stores bool as 0/1
@@ -12,7 +13,7 @@ CREATE TABLE properties (
 
 CREATE UNIQUE INDEX idx_properties_key ON properties(key);
 
--- Ensure exactly one value column is set based on type
+-- Ensure exactly one value column is set based on property
 CREATE TRIGGER properties_validate_value
 BEFORE INSERT ON properties
 FOR EACH ROW

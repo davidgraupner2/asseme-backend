@@ -13,7 +13,6 @@ name = "agent-linux"
 version = "0.1.0"
 dependencies = [
  "config",
- "config-agent",
  "ractor",
  "runtime-agent",
  "runtime-shared",
@@ -403,15 +402,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "config-agent"
-version = "0.1.0"
-dependencies = [
- "config",
- "serde",
- "serde_derive",
-]
-
-[[package]]
 name = "config-server"
 version = "0.1.0"
 dependencies = [
@@ -669,6 +659,7 @@ dependencies = [
  "diesel_migrations",
  "libsqlite3-sys",
  "serde",
+ "serde_json",
  "tokio",
  "tracing",
 ]
@@ -2266,7 +2257,6 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "axum-server",
- "config-agent",
  "database-agent",
  "diesel",
  "once_cell",

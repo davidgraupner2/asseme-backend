@@ -1,10 +1,4 @@
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::sync::RwLock;
-
-// Initialise a global variable that stores the Agent ConnectionString Structs
-static CONNECTION_STRINGS: Lazy<RwLock<AgentConnectionStrings>> =
-    Lazy::new(|| RwLock::new(AgentConnectionStrings::default()));
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentConnectionStrings {

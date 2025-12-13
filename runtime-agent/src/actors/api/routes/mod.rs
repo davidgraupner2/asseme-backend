@@ -1,12 +1,20 @@
 pub(crate) mod v1;
 
 use axum::{Extension, Router};
+
 use std::sync::Arc;
+
+// #[derive(Serialize)]
+// pub struct PaginatedResponse<T> {
+//     pub data: Vec<T>,
+//     pub pagination: PaginationMeta,
+// }
 
 use crate::actors::api::{
     routes::v1::routes::{
         connection_strings::v1_connection_strings_router,
         function_hashes::v1_function_hashes_router, info::v1_info_router,
+        properties::v1_properties_router,
     },
     state::{ApiState, V1ApiState},
 };
@@ -26,5 +34,6 @@ fn v1_router() -> Router<Arc<ApiState>> {
         .merge(v1_info_router(api_version, api_id))
         .merge(v1_connection_strings_router())
         .merge(v1_function_hashes_router())
+        .merge(v1_properties_router())
         .layer(Extension(v1_state))
 }

@@ -1,4 +1,3 @@
-use config_agent::AgentSettings;
 use ractor::Actor;
 use runtime_agent::{
     actors::controller::arguments::AgentControllerArguments, AgentRuntimeController,
@@ -26,18 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .join(AGENT_CONFIG_FILE),
     );
 
-    let settings = AgentSettings::new(
-        runtime_properties
-            .get_file("config_file")
-            .unwrap()
-            .to_string_lossy()
-            .to_string(),
-    )?;
-
-    let agent_runtime_controller_arguments = AgentControllerArguments {
-        api_config: settings.api,
-        log_config: settings.logging,
-    };
+    let agent_runtime_controller_arguments = AgentControllerArguments {};
 
     // Start the runtime controller
     let (_actor, _actor_handle) = Actor::spawn(

@@ -1,7 +1,4 @@
 use crate::actors::api::{routes::v1::responses::ApiResponse, state::ApiState};
-use crate::actors::{
-    API_SOURCE_NAME, CONNECTION_STRING_ACTIVE_STATUS, CONNECTION_STRING_PENDING_STATUS,
-};
 use axum::extract::Query;
 use axum::{
     extract::{Json, State},
@@ -11,7 +8,7 @@ use database_agent::models::function_hashes::{FunctionHashes, NewFunctionHash};
 use database_agent::schema::function_hashes::dsl::function_hashes;
 use diesel::associations::HasTable;
 use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 
 #[derive(Deserialize)]
@@ -21,7 +18,6 @@ pub struct FunctionHashPagination {
     per_page: Option<usize>,
 }
 
-#[axum::debug_handler]
 pub async fn v1_get_function_hashes(
     State(state): State<Arc<ApiState>>,
     Query(params): Query<FunctionHashPagination>,

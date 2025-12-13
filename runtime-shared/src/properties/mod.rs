@@ -177,3 +177,13 @@ fn runtime_id() -> String {
 
     hardware_id_builder.build("id").unwrap()
 }
+
+// fn runtime_id() -> String {
+//     let mut hardware_id_builder = IdBuilder::new(Encryption::SHA256);
+//     hardware_id_builder
+//         .add_component(HWIDComponent::SystemID)
+//         // .add_component(HWIDComponent::CPUID)
+//         .add_component(HWIDComponent::OSName);
+
+//     hardware_id_builder.build("id").unwrap()
+// }
